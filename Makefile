@@ -1,0 +1,40 @@
+DEBUG=1
+
+VPATH=./src/
+EXEC=jonprlprl
+OBJDIR=./obj/
+
+CC=gcc
+OPTS=-Ofast
+LDFLAGS= -lm 
+CFLAGS=-Wall -Wfatal-errors 
+
+ifeq ($(DEBUG), 1) 
+OPTS=-O0 -g
+endif
+
+CFLAGS+=$(OPTS)
+
+OBJ=jonprlprl.o
+
+OBJS = $(addprefix $(OBJDIR), $(OBJ))
+DEPS = $(wildcard src/*.h) Makefile
+
+all: obj $(EXEC)
+
+$(EXEC): $(OBJS)
+	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(OBJDIR)%.o: %.c $(DEPS)
+	$(CC) $(COMMON) $(CFLAGS) -c $< -o $@
+
+obj:
+	mkdir -p obj
+results:
+	mkdir -p results
+
+.PHONY: clean
+
+clean:
+	rm -rf $(OBJS) $(EXEC)
+
