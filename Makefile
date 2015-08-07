@@ -1,7 +1,7 @@
 DEBUG=1
 
 VPATH=./src/
-EXEC=jonprlprl
+EXEC=jonprlprlprl
 OBJDIR=./obj/
 
 CC=gcc
@@ -15,7 +15,7 @@ endif
 
 CFLAGS+=$(OPTS)
 
-OBJ=jonprlprl.o
+OBJ=jonprlprlprl.o term.o utils.o
 
 OBJS = $(addprefix $(OBJDIR), $(OBJ))
 DEPS = $(wildcard src/*.h) Makefile
