@@ -15,7 +15,7 @@ endif
 
 CFLAGS+=$(OPTS)
 
-OBJ=jonprlprlprl.o term.o utils.o
+OBJ=jonprlprlprl.o term.o utils.o parser.o
 
 OBJS = $(addprefix $(OBJDIR), $(OBJ))
 DEPS = $(wildcard src/*.h) Makefile
