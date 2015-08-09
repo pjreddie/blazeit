@@ -5,7 +5,7 @@ EXEC=jonprlprlprl
 OBJDIR=./obj/
 
 CC=gcc
-OPTS=-O2
+OPTS=-Ofast -flto
 LDFLAGS= -lm 
 CFLAGS=-Wall -Wfatal-errors 
 

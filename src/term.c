@@ -72,6 +72,9 @@ void substitute(term *t, term *arg, int level)
 
 void free_term(term *t)
 {
+    if(!t) return;
+    free_term(t->left);
+    free_term(t->right);
     free(t);
 }
 
