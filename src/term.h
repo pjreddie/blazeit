@@ -2,7 +2,7 @@
 #define TERM_H
 
 typedef enum {
-    ANN, VAR, APP, LAM, IND, FUN, TYPE, CONS
+    ANN, VAR, APP, FUN, IND, PI, TYPE, CONS
 } term_kind;
 
 struct term;
@@ -20,5 +20,6 @@ typedef struct term {
 void evaluate_term(term *t);
 void print_term(term *t);
 term *copy_term(term *t);
+void debruijn(term *t);
 
 #endif

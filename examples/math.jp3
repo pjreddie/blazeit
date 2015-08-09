@@ -1,0 +1,7 @@
+(fun f => (fun x => x))
+(fun f => (fun x => (f x)))
+(fun f => (fun x => (f (f x))))
+(fun n => (fun f => (fun x => (f ((n f) x)))))
+(fun m => (fun n => (fun f => (fun x => ((m f) ((n f) x))))))
+((fun n => (fun f => (fun x => (f ((n f) x))))) (fun f => (fun x => (f (f x)))))
+(((fun m => (fun n => (fun f => (fun x => ((m f) ((n f) x)))))) ((fun n => (fun f => (fun x => (f ((n f) x))))) (fun f => (fun x => (f (f x)))))) (fun f => (fun x => (f (f x)))))

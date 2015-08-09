@@ -1,11 +1,11 @@
-DEBUG=1
+DEBUG=0
 
 VPATH=./src/
 EXEC=jonprlprlprl
 OBJDIR=./obj/
 
 CC=gcc
-OPTS=-Ofast
+OPTS=-O2
 LDFLAGS= -lm 
 CFLAGS=-Wall -Wfatal-errors 
 
