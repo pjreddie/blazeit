@@ -225,14 +225,21 @@ term *parse(token_list **list)
     } else if (accept(VAR_T, list)){
         t->kind = VAR;
         t->name = copy_string(token->value);
-        return t;
     } else {
         expect(OPEN_T, list);
         if (accept(FUN_T, list)){
+            term *start = t;
             t->kind = FUN;
             t->left = parse(list);
-            expect(ARR_T, list);
+            while(!accept(ARR_T, list)){
+                term *next = calloc(1, sizeof(term));
+                t->right = next;
+                next->left = parse(list);
+                next->kind = FUN;
+                t = next;
+            }
             t->right = parse(list);
+            t = start;
         }else{
             t->left = parse(list);
             if(accept(COLON_T, list)){
