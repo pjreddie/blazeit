@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "term.h"
+#include "environment.h"
 #include "utils.h"
 #include "parser.h"
 
 int main(int argc, char **argv)
 {
     int debug = 1;
+    environment env = make_environment();
     while(1){
         if(debug){
             printf("~ ");
@@ -20,7 +22,7 @@ int main(int argc, char **argv)
             print_term(t);
             printf("\n");
         }
-        evaluate_term(t);
+        evaluate_term(t, env);
         if(debug){
             printf("Output: ");
             print_term(t);

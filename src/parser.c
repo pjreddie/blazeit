@@ -218,7 +218,7 @@ term *parse(token_list **list)
     term *t = calloc(1, sizeof(term));
 
     if (accept(DEF_T, list)){
-        t->kind = PI;
+        t->kind = DEF;
         t->left = parse(list);
         expect(EQUAL_T, list);
         t->right = parse(list);
@@ -264,5 +264,4 @@ term *parse_term(char *s)
     debruijn(t);
     return t;
 }
-
 

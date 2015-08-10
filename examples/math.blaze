@@ -5,3 +5,8 @@
 (fun m n f x => ((m f) ((n f) x)))
 ((fun n f x => (f ((n f) x))) (fun f x => (f (f x))))
 (((fun m n f x => ((m f) ((n f) x)))  ((fun n f x => (f ((n f) x))) (fun f x => (f (f x)))))  (fun f x => (f (f x))))
+def 0 = (fun f x => x)
+def 1 = (fun f x => (f x))
+def 2 = (fun f x => (f (f x)))
+def sum = (fun m n f x => ((m f) ((n f) x)))
+((sum 1) 2)

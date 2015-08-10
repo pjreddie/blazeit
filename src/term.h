@@ -1,8 +1,10 @@
 #ifndef TERM_H
 #define TERM_H
 
+struct environment;
+
 typedef enum {
-    ANN, VAR, APP, FUN, IND, PI, TYPE, CONS
+    ANN, VAR, APP, FUN, IND, PI, TYPE, CONS, DEF
 } term_kind;
 
 struct term;
@@ -17,10 +19,11 @@ typedef struct term {
     struct term **constructors; 
 } term;
 
-void evaluate_term(term *t);
 void print_term(term *t);
 term *copy_term(term *t);
 void debruijn(term *t);
 void free_term(term *t);
+
+struct environment evaluate_term(term *t, struct environment env);
 
 #endif

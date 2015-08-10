@@ -1,4 +1,4 @@
-DEBUG=0
+DEBUG=1
 
 VPATH=./src/
 EXEC=blazeit
@@ -15,7 +15,7 @@ endif
 
 CFLAGS+=$(OPTS)
 
-OBJ=main.o term.o utils.o parser.o
+OBJ=main.o term.o utils.o parser.o environment.o string_term_map.o list.o
 
 OBJS = $(addprefix $(OBJDIR), $(OBJ))
 DEPS = $(wildcard src/*.h) Makefile
