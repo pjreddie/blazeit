@@ -24,7 +24,7 @@ term:   (fun <term> => <term>)
 #include "utils.h"
 
 typedef enum {
-    NONE_T, OPEN_T, CLOSE_T, FUN_T, VAR_T, ARR_T, TO_T
+    NONE_T, OPEN_T, CLOSE_T, FUN_T, VAR_T, ARR_T, TO_T, DEF_T, COLON_T, EQUAL_T
 } token_kind;
 
 void print_token(token_kind kind)
@@ -51,6 +51,15 @@ void print_token(token_kind kind)
         case TO_T:
             printf("-> ");
             break;
+        case DEF_T:
+            printf("def ");
+            break;
+        case COLON_T:
+            printf(": ");
+            break;
+        case EQUAL_T:
+            printf(": ");
+            break;
     }
 }
 
@@ -60,6 +69,16 @@ typedef struct token_list{
     token_kind kind;
     char *value;
 } token_list;
+
+void free_tokens(token_list *list)
+{
+    while(list){
+        token_list *next = list->next;
+        if(list->value) free(list->value);
+        free(list);
+        list = next;
+    }
+}
 
 int is_varchar(char s)
 {
@@ -85,14 +104,18 @@ token_list *tokenize(char *s)
         }
         if (*s == '('){
             curr->kind = OPEN_T;
-            curr->value = "(";
             ++s;
             ++i;
             continue;
         }
         if (*s == ')'){
             curr->kind = CLOSE_T;
-            curr->value = ")";
+            ++s;
+            ++i;
+            continue;
+        }
+        if (*s == ':'){
+            curr->kind = COLON_T;
             ++s;
             ++i;
             continue;
@@ -100,7 +123,14 @@ token_list *tokenize(char *s)
         if (*s == 'f'){
             if (strncmp(s, "fun", 3) == 0){
                 curr->kind = FUN_T;
-                curr->value = "=";
+                s += 3;
+                i += 3;
+                continue;
+            }
+        }
+        if (*s == 'd'){
+            if (strncmp(s, "def", 3) == 0){
+                curr->kind = DEF_T;
                 s += 3;
                 i += 3;
                 continue;
@@ -109,16 +139,19 @@ token_list *tokenize(char *s)
         if (*s == '='){
             if (strncmp(s, "=>", 2) == 0){
                 curr->kind = ARR_T;
-                curr->value = "=>";
                 s += 2;
                 i += 2;
+                continue;
+            }else{
+                curr->kind = EQUAL_T;
+                ++s;
+                ++i;
                 continue;
             }
         }
         if (*s == '-'){
             if (strncmp(s, "->", 2) == 0){
                 curr->kind = TO_T;
-                curr->value = "->";
                 s += 2;
                 i += 2;
                 continue;
@@ -184,9 +217,14 @@ term *parse(token_list **list)
     token_list *token = *list;
     term *t = calloc(1, sizeof(term));
 
-    if (accept(VAR_T, list)){
+    if (accept(DEF_T, list)){
+        t->kind = PI;
+        t->left = parse(list);
+        expect(EQUAL_T, list);
+        t->right = parse(list);
+    } else if (accept(VAR_T, list)){
         t->kind = VAR;
-        t->name = token->value;
+        t->name = copy_string(token->value);
         return t;
     } else {
         expect(OPEN_T, list);
@@ -196,9 +234,14 @@ term *parse(token_list **list)
             expect(ARR_T, list);
             t->right = parse(list);
         }else{
-            t->kind = APP;
             t->left = parse(list);
-            t->right = parse(list);
+            if(accept(COLON_T, list)){
+                t->kind = ANN;
+                t->right = parse(list);
+            }else{
+                t->kind = APP;
+                t->right = parse(list);
+            }
         }
         expect(CLOSE_T, list);
     }
@@ -208,7 +251,9 @@ term *parse(token_list **list)
 term *parse_term(char *s)
 {
     token_list *tokens = tokenize(s);
+    token_list *start = tokens;
     term *t = parse(&tokens);
+    free_tokens(start);
     debruijn(t);
     return t;
 }

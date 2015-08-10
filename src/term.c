@@ -21,7 +21,7 @@ term *copy_term(term *t)
     copy->kind = t->kind;
     copy->left  = copy_term(t->left);
     copy->right = copy_term(t->right);
-    copy->name = t->name;
+    if (t->name) copy->name = copy_string(t->name);
     copy->n = t->n;
     if (t->kind == IND){
         not_implemented();
@@ -53,6 +53,7 @@ void substitute(term *t, term *arg, int level)
         if(t->n == level){
             term *copy = copy_term(arg);       
             increment(copy, level, 0);
+            if (t->name) free(t->name);
             *t = *copy;
             free(copy);
         }else if(t->n > level){
@@ -75,6 +76,7 @@ void free_term(term *t)
     if(!t) return;
     free_term(t->left);
     free_term(t->right);
+    if (t->name) free(t->name);
     free(t);
 }
 
@@ -93,8 +95,11 @@ void evaluate_term(term *t)
             term *arg = t->right;
             term *body = copy_term(lam->right);
             substitute(body, arg, 0);
+
             free_term(t->left);
             free_term(t->right);
+            if (t->name) free(t->name);
+
             *t = *body;
             free(body);
 
@@ -115,6 +120,8 @@ void debruijn_r(term *t, index_list *list)
         while(list){
             if(strcmp(list->name, t->name) == 0){
                 t->n = count;
+                free(t->name);
+                t->name = 0;
                 break;
             }
             ++count;
@@ -158,8 +165,25 @@ void print_term(term *t)
         print_term(t->right);
         printf(")");
     }
+    if(t->kind == ANN){
+        printf("(");
+        print_term(t->left);
+        printf(" : ");
+        print_term(t->right);
+        printf(")");
+    }
+    if(t->kind == PI){
+        printf("def ");
+        print_term(t->left);
+        printf(" = ");
+        print_term(t->right);
+    }
     if(t->kind == VAR){
-        printf("%s%d", t->name, t->n);
+        if(t->name){
+            printf("%s%d", t->name, t->n);
+        }else{
+            printf("%d", t->n);
+        }
     }
 }
 

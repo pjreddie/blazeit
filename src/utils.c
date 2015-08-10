@@ -5,6 +5,14 @@
 #include <limits.h>
 #include "utils.h"
 
+char *copy_string(char *s)
+{
+    int len = strlen(s);
+    char *copy = calloc(len+1, sizeof(char));
+    memcpy(copy, s, len);
+    return copy;
+}
+
 void error(const char *s)
 {
     fprintf(stderr, "Error: %s\n", s);

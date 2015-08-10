@@ -21,5 +21,6 @@ void evaluate_term(term *t);
 void print_term(term *t);
 term *copy_term(term *t);
 void debruijn(term *t);
+void free_term(term *t);
 
 #endif

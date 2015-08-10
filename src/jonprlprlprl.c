@@ -9,8 +9,8 @@ int main(int argc, char **argv)
     int debug = 1;
     while(1){
         if(debug){
-            //printf("[JonPRLPRLPRL] ");
-            //fflush(stdout);
+            printf("[JonPRLPRLPRL] ");
+            fflush(stdout);
         }
         char *line = fgetl(stdin);
         if(!line) break;
@@ -26,6 +26,8 @@ int main(int argc, char **argv)
             print_term(t);
             printf("\n");
         }
+        free_term(t);
+        free(line);
     }
 
     return 0;
