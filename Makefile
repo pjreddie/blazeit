@@ -1,7 +1,7 @@
 DEBUG=0
 
 VPATH=./src/
-EXEC=jonprlprlprl
+EXEC=blazeit
 OBJDIR=./obj/
 
 CC=gcc
@@ -15,7 +15,7 @@ endif
 
 CFLAGS+=$(OPTS)
 
-OBJ=jonprlprlprl.o term.o utils.o parser.o
+OBJ=main.o term.o utils.o parser.o
 
 OBJS = $(addprefix $(OBJDIR), $(OBJ))
 DEPS = $(wildcard src/*.h) Makefile
@@ -30,8 +30,6 @@ $(OBJDIR)%.o: %.c $(DEPS)
 
 obj:
 	mkdir -p obj
-results:
-	mkdir -p results
 
 .PHONY: clean
 

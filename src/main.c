@@ -9,7 +9,7 @@ int main(int argc, char **argv)
     int debug = 1;
     while(1){
         if(debug){
-            printf("[JonPRLPRLPRL] ");
+            printf("~ ");
             fflush(stdout);
         }
         char *line = fgetl(stdin);
