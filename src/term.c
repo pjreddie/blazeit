@@ -411,6 +411,39 @@ void debruijn(term *t)
     debruijn_r(t, 0);
 }
 
+void print_term_r(term *t, index_list *list);
+
+void print_term_fun(term *t, index_list *list)
+{
+    printf("(fun ");
+    index_list *top = list;
+    while(t && t->kind == FUN){
+        print_term_r(t->left, top);
+        index_list *next = top;
+        top = calloc(1, sizeof(index_list));
+        top->name = t->left->name;
+        top->next = next;
+        t = t->right;
+        printf(" ");
+    }
+    /*
+    if(t->annotation){
+        printf(" : ");
+        print_term_r(t->annotation, list);
+    }
+    */
+    printf(" => ");
+
+    print_term_r(t, top);
+    while(top != list){
+        index_list *next = top->next;
+        free(top);
+        top = next;
+    }
+
+    printf(")");
+}
+
 void print_term_r(term *t, index_list *list)
 {
     if(!t){
@@ -424,7 +457,6 @@ void print_term_r(term *t, index_list *list)
             return;
         }
 
-        if(t->annotation) printf("(");
         if(t->name){
             printf("%s", t->name);
         }else{
@@ -436,11 +468,13 @@ void print_term_r(term *t, index_list *list)
             if(!list) printf("%d", t->n);
             else printf("%s", list->name);
         }
+        /*
         if(t->annotation){
-            printf(" : ");
+            printf(":(");
             print_term_r(t->annotation, front);
             printf(")");
         }
+        */
     }else if (t->kind == DEF){
         printf("def ");
         print_term_r(t->left, list);
@@ -453,21 +487,7 @@ void print_term_r(term *t, index_list *list)
         print_term_r(t->right, list);
         printf(")");
     }else if (t->kind == FUN){
-        printf("(fun ");
-        print_term_r(t->left, list);
-        if(t->annotation){
-            printf(" : ");
-            print_term_r(t->annotation, front);
-        }
-        printf(" => ");
-
-        index_list *top = calloc(1, sizeof(index_list));
-        top->name = t->left->name;
-        top->next = list;
-        print_term_r(t->right, top);
-        free(top);
-
-        printf(")");
+        print_term_fun(t, list);
     }else if (t->kind == IND){
     }else if (t->kind == PI){
         printf("(");

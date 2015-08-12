@@ -5,15 +5,10 @@
 #include "utils.h"
 #include "parser.h"
 
-int main(int argc, char **argv)
+#define debug 1
+
+void blazeit(FILE *input, environment env)
 {
-    int debug = 1;
-    environment env = make_environment();
-    FILE *input = stdin;
-    if(argc > 1){
-        input = fopen(argv[1], "r");
-        if(!input) file_error(argv[1]);
-    }
     while(1){
         if(debug){
             printf("~ ");
@@ -21,10 +16,8 @@ int main(int argc, char **argv)
         }
         char *line = fgetl(input);
         if(!line){
-            printf("\n");
-            if(input == stdin) break;
-            input = stdin;
-            continue;
+            printf("EOF\n");
+            break;
         }
         term *t = parse_string(line);
         if(debug){
@@ -49,6 +42,19 @@ int main(int argc, char **argv)
         free_term(t);
         free(line);
     }
+}
+
+int main(int argc, char **argv)
+{
+    int i;
+    environment env = make_environment();
+    for(i = 1; i < argc; ++i){
+        FILE *fp = fopen(argv[i], "r");
+        if(!fp) file_error(argv[i]);
+        blazeit(fp, env);
+        fclose(fp);
+    }
+    blazeit(stdin, env);
 
     return 0;
 }

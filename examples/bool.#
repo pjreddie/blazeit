@@ -1,0 +1,4 @@
+def bool:Type = (t:Type) -> t -> t -> t
+def true:bool = fun t x y => x
+def false:bool = fun t x y => y
+def not:(bool->bool) = fun b t x y => b t y x
