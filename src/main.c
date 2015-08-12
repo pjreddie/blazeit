@@ -16,7 +16,7 @@ int main(int argc, char **argv)
         }
         char *line = fgetl(stdin);
         if(!line) break;
-        term *t = parse_term(line);
+        term *t = parse_string(line);
         if(debug){
             printf("Input: ");
             print_term(t);

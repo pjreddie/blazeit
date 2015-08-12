@@ -1,4 +1,5 @@
 #include "tokenizer.h"
+#include "utils.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -91,6 +92,7 @@ token_list *tokenize(char *s)
         }
         if (*s == '_'){
             curr->kind = UNDER_T;
+            curr->value = copy_string("_");
             ++s;
             ++i;
             continue;

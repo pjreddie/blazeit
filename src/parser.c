@@ -36,8 +36,8 @@ VAR:    <var> : TERM
 
 void expect(token_kind kind, token_list **l)
 {
-    token_kind k = (*l)->kind;
-    if(k != kind){
+    token_list *token = *l;
+    if(!token || token->kind != kind){
         printf("Expected: ");
         print_token(kind);
         printf("\n");
@@ -50,10 +50,16 @@ void expect(token_kind kind, token_list **l)
 
 int accept(token_kind kind, token_list **l)
 {
-    token_kind k = (*l)->kind;
-    if(k != kind) return 0;
+    token_list *token = *l;
+    if(!token || token->kind != kind) return 0;
     (*l) = (*l)->next;
     return 1;
+}
+
+int peek(token_kind kind, token_list **l)
+{
+    token_list *token = *l;
+    return (token && token->kind == kind);
 }
 
 term *convert_unnamed(term *t)
@@ -67,84 +73,113 @@ term *convert_unnamed(term *t)
     return var;
 }
 
-term *parse(token_list **list)
+term *parse_pi(token_list **list, term *t)
 {
-    token_list *token = *list;
-    term *t = calloc(1, sizeof(term));
+    term *pi = calloc(1, sizeof(term));
+    pi->kind = PI;
+    pi->left = convert_unnamed(t);
+    pi->right = parse(list);
+    return pi;
+}
 
-    if (accept(DEF_T, list)){
-        t->kind = DEF;
-        t->left = parse(list);
-        expect(EQUAL_T, list);
-        t->right = parse(list);
-    } else if (accept(VAR_T, list)){
-        t->kind = VAR;
-        t->name = copy_string(token->value);
-        if(accept(COLON_T, list)){
-            t->annotation = parse(list);
-        }
-    } else if (accept(UNDER_T, list)){
-        t->kind = VAR;
-        t->name = copy_string("_");
-        if(accept(COLON_T, list)){
-            t->annotation = parse(list);
-        }
-    } else if (accept(TYPE_T, list)){
-        t->kind = TYPE;
-    } else {
-        expect(OPEN_T, list);
-        if (accept(FUN_T, list)){
-            term *start = t;
-            t->kind = FUN;
-            t->left = parse(list);
-            while(1){
-                if (accept(ARR_T, list)) break;
-                if(accept(COLON_T, list)){
-                    t->annotation = parse(list);
-                    expect(ARR_T, list);
-                    break;
-                }
-                term *next = calloc(1, sizeof(term));
-                t->right = next;
-                next->left = parse(list);
-                next->kind = FUN;
-                t = next;
-            }
-            t->right = parse(list);
-            t = start;
-        }else{
-            t->left = parse(list);
-            if(accept(COLON_T, list)){
-                replace_term(t, t->left);
-                t->annotation = parse(list);
-            }else if(accept(TO_T, list)){
-                term *orig = t;
-                t->kind = PI;
-                t->left = convert_unnamed(t->left);
-                t->right = parse(list);
-                while(accept(TO_T, list)){
-                    term *left = t->right;
-                    left = convert_unnamed(left);
-                    term *right = parse(list);
-                    term *new = calloc(1, sizeof(term));
-                    new->kind = PI;
-                    new->left = left;
-                    new->right = right;
-                    t->right = new;
-                    t = new;
-                }
-                t = orig;
-            }else{
-                t->kind = APP;
-                t->right = parse(list);
-            }
-        }
+term *parse_app(token_list **list, term *t)
+{
+    term *arg = parse_term(list);
+    if (!arg) return t;
+    term *app = calloc(1, sizeof(term));
+    app->kind = APP;
+    app->left = t;
+    app->right = arg;
+    return app;
+}
+
+term *parse_def(token_list **list)
+{
+    term *t = calloc(1, sizeof(term));
+    t->kind = DEF;
+    t->left = parse(list);
+    expect(EQUAL_T, list);
+    t->right = parse(list);
+    return t;
+}
+
+term *parse_type(token_list **list)
+{
+    term *t = calloc(1, sizeof(term));
+    t->kind = TYPE;
+    return t;
+}
+
+term *parse_var(token_list **list)
+{
+    if(accept(OPEN_T, list)){
+        term *sub = parse_var(list);
         expect(CLOSE_T, list);
+        return sub;
+    }
+
+    token_list *token = *list;
+    if (!accept(VAR_T, list)) expect(UNDER_T, list);
+    term *t = calloc(1, sizeof(term));
+    t->kind = VAR;
+    t->name = copy_string(token->value);
+    if(accept(COLON_T, list)){
+        t->annotation = parse_term(list);
     }
     return t;
 }
 
-term *parse_term(char *s)
+term *parse_fun(token_list **list)
+{
+    term *top = calloc(1, sizeof(term));
+    term *t = top;
+    t->kind = FUN;
+    t->left = parse_var(list);
+    while(1){
+        if (accept(ARR_T, list)) break;
+        if(accept(COLON_T, list)){
+            t->annotation = parse(list);
+            expect(ARR_T, list);
+            break;
+        }
+        term *next = calloc(1, sizeof(term));
+        t->right = next;
+        next->left = parse_var(list);
+        next->kind = FUN;
+        t = next;
+
+    }
+    t->right = parse(list);
+    return top;
+}
+
+term *parse_subterm(token_list **list)
+{
+    term *t = parse(list);
+    expect(CLOSE_T, list);
+    return t;
+}
+
+term *parse_term(token_list **list)
+{
+    if(accept(OPEN_T, list)) return parse_subterm(list);
+    if(accept(FUN_T, list)) return parse_fun(list);
+    if(peek(VAR_T, list) || peek(UNDER_T,list)) return parse_var(list);
+    if(accept(DEF_T, list)) return parse_def(list);
+    if(accept(TYPE_T, list)) return parse_type(list);
+    return 0;
+}
+
+term *parse(token_list **list)
+{
+    term *t = parse_term(list);
+    if(!(*list)) return t;
+    if(!t) return 0;
+    if(accept(TO_T, list)) return parse_pi(list, t);
+    else return parse_app(list, t);
+}
+
+term *parse_string(char *s)
 {
     token_list *tokens = tokenize(s);
     //print_tokens(tokens);
