@@ -1,5 +1,5 @@
 # BlazeIt
 A proof assistant.
 
-    ./blazeit examples/nat.#
+    ./blazeit examples/nat.# examples/bool.#
 
