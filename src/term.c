@@ -152,47 +152,12 @@ int compare_types(term *t1, term *t2)
     return (compare_types(t1->left, t2->left) && compare_types(t1->right, t2->right));
 }
 
-term *get_context(context *c, int n)
-{
-    int i;
-    for(i = 0; i < n; ++i){
-        if(!c) break;
-        c = c->next;
-    }
-    if(!c) return 0;
-    term *lookup = c->value;
-    //printf("Lookup: ");
-    //print_term(lookup);
-    //printf("\n");
-    return lookup;
-}
-
-context *add_context(context *c, environment env, term *t)
-{
-    context *new = calloc(1, sizeof(context));
-    new->next = c;
-    if(c) c->prev = new;
-    new->value = copy_term(t);
-    evaluate_term(new->value, env);
-    return new;
-}
-
-void print_context(context *c)
-{
-    while(c){
-        print_term(c->value);
-        printf("...");
-        c = c->next;
-    }
-    printf("\n");
-}
-
-term *type_infer(term *t, environment env, context *c)
+term *type_infer(term *t, environment env, term_list *context)
 {
     if(t->kind == VAR){
         term *l = 0;
         if (t->name) l = get_environment(env, t->name);
-        else l = get_context(c, t->n);
+        else l = get_term_list(context, t->n);
         if (!l) {
             //printf("Couldn't find var ");
             //print_term(t);
@@ -217,10 +182,10 @@ term *type_infer(term *t, environment env, context *c)
     if(t->kind == FUN){
         term *arg = t->left;
         term *body = t->right;
-        context *new = add_context(c, env, arg);
-        term* infer = type_infer(body, env, new);
-        free_term(new->value);
-        free(new);
+        evaluate_term(arg, env);
+        context = push_term_list(context, arg);
+        term* infer = type_infer(body, env, context);
+        context = pop_term_list(context);
         if(!infer){
             //printf("Couldn't infer Body type ");
             //print_term(body);
@@ -243,7 +208,7 @@ term *type_infer(term *t, environment env, context *c)
     if(t->kind == APP){
         term *f = t->left;
         term *x = t->right;
-        term *pi = type_infer(f, env, c);
+        term *pi = type_infer(f, env, context);
         if(!pi) return 0;
         if (pi->kind != PI){
             //printf("APP doesn't have PI type\n");
@@ -256,7 +221,7 @@ term *type_infer(term *t, environment env, context *c)
             //printf("PI variable doesn't have annotation\n");
             return 0;
         }
-        int check = type_check(x, env, c, S);
+        int check = type_check(x, env, context, S);
         if (!check) return 0;
         term *sub = copy_term(T);
         //printf("Subbing ");
@@ -302,10 +267,10 @@ term *type_infer(term *t, environment env, context *c)
     }
     if(t->kind == DEF){
         if(t->left->annotation){
-            int check = type_check(t->right, env, c, t->left->annotation);
+            int check = type_check(t->right, env, context, t->left->annotation);
             if(check) return copy_term(t->left->annotation);
         }else{
-            term *infer = type_infer(t->right, env, c);    
+            term *infer = type_infer(t->right, env, context);    
             t->left->annotation = copy_term(infer);
             return copy_term(infer);
         }
@@ -314,7 +279,7 @@ term *type_infer(term *t, environment env, context *c)
     return 0;
 }
 
-int type_check(term *t, environment env, context *c, term *type)
+int type_check(term *t, environment env, term_list *context, term *type)
 {
     evaluate_term(type, env);
     //printf("check ");
@@ -328,23 +293,22 @@ int type_check(term *t, environment env, context *c, term *type)
     if(type->kind == PI){
         if(t->kind == FUN){
             term *arg_type = type->left->annotation;
-            term *arg = t->left->annotation;
-            if(arg){
-                evaluate_term(arg, env);
-                if(!compare_types(arg, arg_type)){
+            term *arg = t->left;
+            evaluate_term(arg, env);
+            if(arg->annotation){
+                if(!compare_types(arg->annotation, arg_type)){
                     //printf("Arguement doesn't match annotation\n");
                     return 0;
                 }
             }else{
-                t->left->annotation = copy_term(arg_type);
+                arg->annotation = copy_term(arg_type);
             }
             term *body = t->right;
             term *body_type = type->right;
 
-            context *new = add_context(c, env, t->left);
-            int check = type_check(body, env, new, body_type);
-            free_term(new->value);
-            free(new);
+            context = push_term_list(context, arg);
+            int check = type_check(body, env, context, body_type);
+            context = pop_term_list(context);
             return check;
         }
         if(t->kind == PI || t->kind == TYPE || t->kind == IND) return 0;
@@ -365,7 +329,7 @@ int type_check(term *t, environment env, context *c, term *type)
     if (t->kind == VAR){
         term *l = 0;
         if (t->name) l = get_environment(env, t->name);
-        else l = get_context(c, t->n);
+        else l = get_term_list(context, t->n);
         if (!l){
             //printf("VAR not found in env or context\n");
             return 0;
@@ -382,7 +346,7 @@ int type_check(term *t, environment env, context *c, term *type)
         //printf("VAR doesn't match type\n");
         return 0;
     } else if (t->kind == APP){
-        term *infer = type_infer(t, env, c);
+        term *infer = type_infer(t, env, context);
         int compare = compare_types(infer, type);
         free_term(infer);
         if (compare) return 1;

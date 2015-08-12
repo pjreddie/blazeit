@@ -15,7 +15,7 @@ endif
 
 CFLAGS+=$(OPTS)
 
-OBJ=main.o term.o utils.o parser.o environment.o string_term_map.o list.o
+OBJ=main.o term.o utils.o parser.o environment.o string_term_map.o list.o term_list.o
 
 OBJS = $(addprefix $(OBJDIR), $(OBJ))
 DEPS = $(wildcard src/*.h) Makefile

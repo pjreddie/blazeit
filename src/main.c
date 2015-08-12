@@ -28,7 +28,9 @@ int main(int argc, char **argv)
             print_term(type);
             printf("\n");
         }
-        evaluate_term(t, env);
+        if(type) evaluate_term(t, env);
+        else fprintf(stderr, "Didn't Type Check!\n");
+
         if(debug){
             printf("Output: ");
             print_term(t);

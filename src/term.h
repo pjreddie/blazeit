@@ -1,5 +1,6 @@
 #ifndef TERM_H
 #define TERM_H
+#include "term_list.h"
 
 struct environment;
 
@@ -8,12 +9,6 @@ typedef enum {
 } term_kind;
 
 struct term;
-
-typedef struct context{
-    struct context *next;
-    struct context *prev;
-    struct term *value;
-} context;
 
 typedef struct term {
     term_kind kind;
@@ -31,8 +26,8 @@ term *copy_term(term *t);
 void debruijn(term *t);
 void free_term(term *t);
 void replace_term(term *old, term *new);
-int type_check(term *t, struct environment env, context *c, term *type);
-term *type_infer(term *t, struct environment env, context *c);
+int type_check(term *t, struct environment env, term_list *context, term *type);
+term *type_infer(term *t, struct environment env, term_list *context);
 
 struct environment evaluate_term(term *t, struct environment env);
 

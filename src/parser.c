@@ -9,11 +9,21 @@ def plus : (_:nat) -> (_:nat) -> nat =
     fun x => fun y =>
         nat.ind (fun _:nat => nat) y (fun _:nat => fun sum:nat => S sum) x.
 
-term:   (fun <term> => <term>)
-        (<term> <term>)
-        (<term> : <term>)
-        (<term> -> <term>)
-        <var>
+
+TERM:   def V = E
+        TYPE
+        FUN
+        VAR
+        (TERM)
+
+TYPE:   var -> term ...
+
+FUN:    fun TERM => TERM
+
+APP:    TERM TERM ...
+
+VAR:    <var> : TERM
+        TYPE
 
 */
 
@@ -150,6 +160,10 @@ token_list *tokenize(char *s)
         }
         if (*s == 'd'){
             if (strncmp(s, "def", 3) == 0){
+                if(curr->prev){
+                    fprintf(stderr, "Definitions must come first!");
+                    return 0;
+                }
                 curr->kind = DEF_T;
                 s += 3;
                 i += 3;
@@ -193,7 +207,8 @@ token_list *tokenize(char *s)
             ++i;
             continue;
         }
-        printf("Didn't recognize char '%c'\n", *s);
+        fprintf(stderr, "Didn't recognize char '%c'\n", *s);
+        return 0;
         ++s;
         ++i;
     }
