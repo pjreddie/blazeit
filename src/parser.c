@@ -24,7 +24,7 @@ term:   (fun <term> => <term>)
 #include "utils.h"
 
 typedef enum {
-    NONE_T, OPEN_T, CLOSE_T, FUN_T, VAR_T, ARR_T, TO_T, DEF_T, COLON_T, EQUAL_T
+    NONE_T, OPEN_T, CLOSE_T, FUN_T, VAR_T, ARR_T, TO_T, DEF_T, COLON_T, EQUAL_T, TYPE_T, UNDER_T
 } token_kind;
 
 void print_token(token_kind kind)
@@ -35,6 +35,9 @@ void print_token(token_kind kind)
             break;
         case OPEN_T:
             printf("( ");
+            break;
+        case TYPE_T:
+            printf("TYPE ");
             break;
         case CLOSE_T:
             printf(") ");
@@ -58,7 +61,10 @@ void print_token(token_kind kind)
             printf(": ");
             break;
         case EQUAL_T:
-            printf(": ");
+            printf("= ");
+            break;
+        case UNDER_T:
+            printf("_ ");
             break;
     }
 }
@@ -82,7 +88,7 @@ void free_tokens(token_list *list)
 
 int is_varchar(char s)
 {
-    return (s >= 65 && s <= 90) || (s >= 97 && s <= 122) || (s >= 48 && s <= 57);
+    return (s >= 65 && s <= 90) || (s >= 97 && s <= 122) || (s >= 48 && s <= 57) || s == '_';
 }
 
 token_list *tokenize(char *s)
@@ -114,6 +120,12 @@ token_list *tokenize(char *s)
             ++i;
             continue;
         }
+        if (*s == '_'){
+            curr->kind = UNDER_T;
+            ++s;
+            ++i;
+            continue;
+        }
         if (*s == ':'){
             curr->kind = COLON_T;
             ++s;
@@ -125,6 +137,14 @@ token_list *tokenize(char *s)
                 curr->kind = FUN_T;
                 s += 3;
                 i += 3;
+                continue;
+            }
+        }
+        if (*s == 'T'){
+            if (strncmp(s, "Type", 4) == 0){
+                curr->kind = TYPE_T;
+                s += 4;
+                i += 4;
                 continue;
             }
         }
@@ -180,16 +200,24 @@ token_list *tokenize(char *s)
     return start;
 }
 
+void print_tokens(token_list *list)
+{
+    while (list){
+        print_token(list->kind);
+        list = list->next;
+    }
+    printf("\n");
+}
+
 void expect(token_kind kind, token_list **l)
 {
     token_kind k = (*l)->kind;
     if(k != kind){
-        token_list *list = *l;
-        while(list){
-            printf("%s, ", list->value);
-            list = list->next;
-        }
+        printf("Expected: ");
+        print_token(kind);
         printf("\n");
+
+        print_tokens(*l);
         error("Syntax Error");
     }
     (*l) = (*l)->next;
@@ -212,6 +240,17 @@ term:   (fun <term> => <term>)
 
 */
 
+term *convert_unnamed(term *t)
+{
+    if(t->annotation) return t;
+    term *type = t;
+    term *var = calloc(1, sizeof(term));
+    var->kind = VAR;
+    var->annotation = type;
+    var->name = copy_string("_");
+    return var;
+}
+
 term *parse(token_list **list)
 {
     token_list *token = *list;
@@ -225,13 +264,30 @@ term *parse(token_list **list)
     } else if (accept(VAR_T, list)){
         t->kind = VAR;
         t->name = copy_string(token->value);
+        if(accept(COLON_T, list)){
+            t->annotation = parse(list);
+        }
+    } else if (accept(UNDER_T, list)){
+        t->kind = VAR;
+        t->name = copy_string("_");
+        if(accept(COLON_T, list)){
+            t->annotation = parse(list);
+        }
+    } else if (accept(TYPE_T, list)){
+        t->kind = TYPE;
     } else {
         expect(OPEN_T, list);
         if (accept(FUN_T, list)){
             term *start = t;
             t->kind = FUN;
             t->left = parse(list);
-            while(!accept(ARR_T, list)){
+            while(1){
+                if (accept(ARR_T, list)) break;
+                if(accept(COLON_T, list)){
+                    t->annotation = parse(list);
+                    expect(ARR_T, list);
+                    break;
+                }
                 term *next = calloc(1, sizeof(term));
                 t->right = next;
                 next->left = parse(list);
@@ -243,8 +299,25 @@ term *parse(token_list **list)
         }else{
             t->left = parse(list);
             if(accept(COLON_T, list)){
-                t->kind = ANN;
+                replace_term(t, t->left);
+                t->annotation = parse(list);
+            }else if(accept(TO_T, list)){
+                term *orig = t;
+                t->kind = PI;
+                t->left = convert_unnamed(t->left);
                 t->right = parse(list);
+                while(accept(TO_T, list)){
+                    term *left = t->right;
+                    left = convert_unnamed(left);
+                    term *right = parse(list);
+                    term *new = calloc(1, sizeof(term));
+                    new->kind = PI;
+                    new->left = left;
+                    new->right = right;
+                    t->right = new;
+                    t = new;
+                }
+                t = orig;
             }else{
                 t->kind = APP;
                 t->right = parse(list);
@@ -258,6 +331,7 @@ term *parse(token_list **list)
 term *parse_term(char *s)
 {
     token_list *tokens = tokenize(s);
+    //print_tokens(tokens);
     token_list *start = tokens;
     term *t = parse(&tokens);
     free_tokens(start);

@@ -22,6 +22,12 @@ int main(int argc, char **argv)
             print_term(t);
             printf("\n");
         }
+        term *type = type_infer(t, env, 0);
+        if(debug){
+            printf("Type Check: ");
+            print_term(type);
+            printf("\n");
+        }
         evaluate_term(t, env);
         if(debug){
             printf("Output: ");
