@@ -10,6 +10,7 @@ typedef struct term_list{
 } term_list;
 
 struct term *get_term_list(term_list *l, int n);
+term_list *find_term_list(term_list *l, char *name);
 term_list *push_term_list(term_list *l, struct term *t);
 term_list *pop_term_list(term_list *l);
 

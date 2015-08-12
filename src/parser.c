@@ -101,6 +101,7 @@ term *parse_def(token_list **list)
     term *t = calloc(1, sizeof(term));
     t->kind = DEF;
     t->left = parse(list);
+    t->name = copy_string(t->left->name);
     expect(EQUAL_T, list);
     t->right = parse(list);
     return t;

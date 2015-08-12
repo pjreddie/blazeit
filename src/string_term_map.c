@@ -1,5 +1,6 @@
 #include "string_term_map.h"
 #include "term.h"
+#include "term_list.h"
 
 //djb2 hash function
 //taken from http://www.cse.yorku.ca/~oz/hash.html
@@ -24,16 +25,17 @@ string_term_map *make_string_term_map()
     string_term_map *m = malloc(sizeof(string_term_map));
     m->size = 63;
     m->load = 0;
-    m->elements = calloc(m->size, sizeof(list*));
+    m->elements = calloc(m->size, sizeof(term_list*));
     return m;
 }
+
 void free_string_term_map(string_term_map *m)
 {
     int i;
     for(i = 0; i < m->size; ++i){
         if(m->elements[i]){
-            free_list_contents(m->elements[i]);
-            free_list(m->elements[i]);
+            term_list *l = m->elements[i];
+            while(l) l = pop_term_list(l);
         }
     }
     free(m->elements);
@@ -44,73 +46,44 @@ void expand_string_term_map(string_term_map *m)
 {
     int i;
     int old_size = m->size;
-    list **old_elements = m->elements;
+    term_list **old_elements = m->elements;
     m->size = (m->size+1)*2-1;
-    m->elements = calloc(m->size, sizeof(list*));
+    m->elements = calloc(m->size, sizeof(term_list*));
     for(i = 0; i < old_size; ++i){
         if(old_elements[i]){
-            list *l = old_elements[i];
-            node *n = l->front;
-            while(n != 0){
-                string_term_kvp *pair = (string_term_kvp *)n->val;
-                unsigned int h = hash_string(pair->key)%m->size;
-                if(!m->elements[h]) m->elements[h] = make_list();
-                list_insert(m->elements[h], pair);
-                n = n->next;
+            term_list *l = old_elements[i];
+            while(l){
+                term *t = l->value;
+                unsigned int h = hash_string(t->name)%m->size;
+                m->elements[h] = push_term_list(m->elements[h], t);
+                l = pop_term_list(l);
             }
-            free_list(l);
         }
     }
     free(old_elements);
 }
 
-string_term_kvp *string_term_kvp_list_find(list *l, string key)
+void string_term_map_add(string_term_map *m, term* val)
 {
-    if(!l) return 0;
-    node *n = l->front;
-    while(n){
-        string_term_kvp *pair = (string_term_kvp *)n->val;
-        if(compare_string(pair->key, key)) return pair;
-        n = n->next;
-    }
-    return 0;
-}
-
-void string_term_kvp_list_insert(list *l, string key, term* val)
-{
-        string_term_kvp *pair = malloc(sizeof(string_term_kvp));
-        pair->key = key;
-        pair->val = val;
-        list_insert(l, pair);
-}
-
-void string_term_map_set(string_term_map *m, string key, term* val)
-{
+    char *key = val->name;
     if((double)m->load/m->size > .7) expand_string_term_map(m);  
     unsigned int h = hash_string(key)%m->size;
-    list *l = m->elements[h];
-    if(l == 0){
-        m->elements[h] = make_list();
-        string_term_kvp_list_insert(m->elements[h], key, val);
+    term_list *l = m->elements[h];
+    term_list *current = find_term_list(l, key);
+    if(!current){
+        m->elements[h] = push_term_list(l, val);
         ++m->load;
     }else{
-        string_term_kvp *current = string_term_kvp_list_find(l, key);
-        if(!current){
-            string_term_kvp_list_insert(l, key, val);
-            ++m->load;
-        }else{
-            free_term(current->val);
-            current->val = val;
-        }
+        free_term(current->value);
+        current->value = copy_term(val);
     }
 }
 
 term *string_term_map_get(string_term_map *m, string key)
 {
     unsigned int h = hash_string(key)%m->size;
-    list *l = m->elements[h];
-    string_term_kvp *pair = string_term_kvp_list_find(l, key);
-    if(pair) return (pair->val);
+    term_list *l = find_term_list(m->elements[h], key);
+    if(l) return l->value;
     return 0;
 }
 

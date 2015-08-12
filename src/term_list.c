@@ -2,6 +2,7 @@
 #include "term.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 term *get_term_list(term_list *l, int n)
 {
@@ -16,6 +17,16 @@ term *get_term_list(term_list *l, int n)
     //printf("\n");
     return lookup;
 }
+
+term_list *find_term_list(term_list *l, char *name)
+{
+    while(l){
+        if(l->value->name && strcmp(name, l->value->name)==0) return l;
+        l = l->next;
+    }
+    return 0;
+}
+
 
 term_list *push_term_list(term_list *l, term *t)
 {

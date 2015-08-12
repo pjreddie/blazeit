@@ -9,3 +9,23 @@ def sum:(nat -> nat -> nat) = fun m n t f x => m t f (n t f x)
 def prod:(nat->nat->nat) = fun m n t f x => m t (n t f) x
 def 5 = sum 2 3
 def 10 = prod 2 5
+def 11 = sum 10 1
+def 12 = sum 11 1
+def 13 = sum 12 1
+def 14 = sum 13 1
+def 15 = sum 14 1
+def 16 = sum 15 1
+def 17 = sum 16 1
+def 18 = sum 17 1
+def 19 = sum 18 1
+def 20 = sum 19 1
+def 21 = sum 20 1
+def 22 = sum 21 1
+def 23 = sum 22 1
+def 24 = sum 23 1
+def 25 = sum 24 1
+def 26 = sum 25 1
+def 27 = sum 26 1
+def 28 = sum 27 1
+def 29 = sum 28 1
+def 30 = sum 29 1

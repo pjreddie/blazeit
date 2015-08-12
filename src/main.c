@@ -39,6 +39,7 @@ void blazeit(FILE *input, environment env)
             print_term(t);
             printf("\n");
         }
+        free_term(type);
         free_term(t);
         free(line);
     }
@@ -55,6 +56,7 @@ int main(int argc, char **argv)
         fclose(fp);
     }
     blazeit(stdin, env);
+    free_environment(env);
 
     return 0;
 }

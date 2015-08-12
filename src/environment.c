@@ -8,10 +8,14 @@ environment make_environment()
     return env;
 }
 
+void free_environment(environment env)
+{
+    free_string_term_map(env.map);
+}
+
 void set_environment(environment env, term *t)
 {
-    term *copy = copy_term(t);
-    string_term_map_set(env.map, copy->left->name, copy);
+    string_term_map_add(env.map, t);
 }
 
 term *get_environment(environment env, char *s)

@@ -11,6 +11,7 @@ typedef struct environment{
 environment make_environment();
 void set_environment(environment env, struct term *t);
 struct term *get_environment(environment env, char *s);
+void free_environment(environment env);
 
 #endif
 

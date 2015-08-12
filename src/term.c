@@ -78,6 +78,7 @@ void free_term(term *t)
     if(!t) return;
     free_term(t->left);
     free_term(t->right);
+    free_term(t->annotation);
     if (t->name) free(t->name);
     free(t);
 }
@@ -98,6 +99,7 @@ environment evaluate_term(term *t, environment env)
     if (t->annotation) evaluate_term(t->annotation, env);
     if (t->kind == DEF){
         evaluate_term(t->right, env);
+        free_term(t->right->annotation);
         t->right->annotation = copy_term(t->left->annotation);
         set_environment(env, t);
     }
@@ -272,7 +274,7 @@ term *type_infer(term *t, environment env, term_list *context)
         }else{
             term *infer = type_infer(t->right, env, context);    
             t->left->annotation = copy_term(infer);
-            return copy_term(infer);
+            return infer;
         }
         return 0;
     }
