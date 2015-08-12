@@ -1,11 +1,11 @@
 def nat:Type = t:Type -> (t->t) -> t -> t
 def O:nat = fun t f x => x
-def S:(nat -> nat) = fun n t f x => f (((n t) f) x))
+def S:(nat -> nat) = fun n t f x => f (n t f x)
 def 1:nat = S O
 def 2 = S (S O)
 def 3 = S (S (S O))
-def int_t = (P:(nat -> Type) -> (P O) -> (n:nat -> (P nat) -> (P (S n))) -> n:nat -> (P n))
-def sum:(nat -> nat -> nat) = fun m n t f x => ((m t) f) (((n t) f) x)
-def prod:(nat->nat->nat) = fun m n t f x => ((m t) ((n t) f)) x
-def 5:nat = (sum 2) 3
-def 10:nat = (prod 2) 5
+def int_t = P:(nat -> Type) -> (P O) -> (n:nat -> (P nat) -> (P (S n))) -> n:nat -> (P n)
+def sum:(nat -> nat -> nat) = fun m n t f x => m t f (n t f x)
+def prod:(nat->nat->nat) = fun m n t f x => m t (n t f) x
+def 5 = sum 2 3
+def 10 = prod 2 5

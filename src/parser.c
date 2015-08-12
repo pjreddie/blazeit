@@ -82,15 +82,18 @@ term *parse_pi(token_list **list, term *t)
     return pi;
 }
 
-term *parse_app(token_list **list, term *t)
+term *parse_application(token_list **list, term *t)
 {
     term *arg = parse_term(list);
-    if (!arg) return t;
-    term *app = calloc(1, sizeof(term));
-    app->kind = APP;
-    app->left = t;
-    app->right = arg;
-    return app;
+    while(arg){
+        term *app = calloc(1, sizeof(term));
+        app->kind = APP;
+        app->left = t;
+        app->right = arg;
+        t = app;
+        arg = parse_term(list);
+    }
+    return t;
 }
 
 term *parse_def(token_list **list)
@@ -176,7 +179,7 @@ term *parse(token_list **list)
     if(!(*list)) return t;
     if(!t) return 0;
     if(accept(TO_T, list)) return parse_pi(list, t);
-    else return parse_app(list, t);
+    else return parse_application(list, t);
 }
 
 term *parse_string(char *s)
