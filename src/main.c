@@ -7,7 +7,7 @@
 
 #define debug 1
 
-void blazeit(FILE *input, environment env)
+void blazeit(FILE *input, environment *env)
 {
     while(1){
         if(debug){
@@ -48,7 +48,7 @@ void blazeit(FILE *input, environment env)
 int main(int argc, char **argv)
 {
     int i;
-    environment env = make_environment();
+    environment *env = make_environment();
     for(i = 1; i < argc; ++i){
         FILE *fp = fopen(argv[i], "r");
         if(!fp) file_error(argv[i]);

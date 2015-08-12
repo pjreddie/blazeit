@@ -93,15 +93,15 @@ void replace_term(term *old, term *new)
     free(copy);
 }
 
-environment evaluate_term(term *t, environment env)
+void evaluate_term(term *t, environment *env)
 {
-    if(!t) return env;
+    if(!t) return;
     if (t->annotation) evaluate_term(t->annotation, env);
     if (t->kind == DEF){
         evaluate_term(t->right, env);
         free_term(t->right->annotation);
         t->right->annotation = copy_term(t->left->annotation);
-        set_environment(env, t);
+        add_environment(env, t);
     }
     if (t->kind == VAR){
         term *lookup = 0;
@@ -135,7 +135,6 @@ environment evaluate_term(term *t, environment env)
             evaluate_term(t, env);
         }
     }
-    return env;
 }
 
 int compare_types(term *t1, term *t2)
@@ -154,7 +153,7 @@ int compare_types(term *t1, term *t2)
     return (compare_types(t1->left, t2->left) && compare_types(t1->right, t2->right));
 }
 
-term *type_infer(term *t, environment env, term_list *context)
+term *type_infer(term *t, environment *env, term_list *context)
 {
     if(t->kind == VAR){
         term *l = 0;
@@ -281,7 +280,7 @@ term *type_infer(term *t, environment env, term_list *context)
     return 0;
 }
 
-int type_check(term *t, environment env, term_list *context, term *type)
+int type_check(term *t, environment *env, term_list *context, term *type)
 {
     evaluate_term(type, env);
     //printf("check ");
