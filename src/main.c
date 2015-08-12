@@ -9,13 +9,23 @@ int main(int argc, char **argv)
 {
     int debug = 1;
     environment env = make_environment();
+    FILE *input = stdin;
+    if(argc > 1){
+        input = fopen(argv[1], "r");
+        if(!input) file_error(argv[1]);
+    }
     while(1){
         if(debug){
             printf("~ ");
             fflush(stdout);
         }
-        char *line = fgetl(stdin);
-        if(!line) break;
+        char *line = fgetl(input);
+        if(!line){
+            printf("\n");
+            if(input == stdin) break;
+            input = stdin;
+            continue;
+        }
         term *t = parse_string(line);
         if(debug){
             printf("Input: ");

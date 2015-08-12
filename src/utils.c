@@ -5,6 +5,12 @@
 #include <limits.h>
 #include "utils.h"
 
+void file_error(char *s)
+{
+    fprintf(stderr, "Couldn't open file: %s\n", s);
+    exit(0);
+}
+
 char *copy_string(char *s)
 {
     int len = strlen(s);
