@@ -6,4 +6,6 @@ def 2 = S (S O)
 def 3 = S (S (S O))
 def int_t = (P:(nat -> Type) -> (P O) -> (n:nat -> (P nat) -> (P (S n))) -> n:nat -> (P n))
 def sum:(nat -> nat -> nat) = fun m n t f x => ((m t) f) (((n t) f) x)
+def prod:(nat->nat->nat) = fun m n t f x => ((m t) ((n t) f)) x
 def 5:nat = (sum 2) 3
+def 10:nat = (prod 2) 5
