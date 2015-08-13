@@ -164,6 +164,16 @@ term *parse_subterm(token_list **list)
     return t;
 }
 
+term *parse_hole(token_list **list)
+{
+    term *t = calloc(1, sizeof(term));
+    t->kind = HOLE;
+    if(accept(COLON_T, list)){
+        t->annotation = parse_term(list);
+    }
+    return t;
+}
+
 term *parse_term(token_list **list)
 {
     if(accept(OPEN_T, list)) return parse_subterm(list);
@@ -171,6 +181,7 @@ term *parse_term(token_list **list)
     if(peek(VAR_T, list) || peek(UNDER_T,list)) return parse_var(list);
     if(accept(DEF_T, list)) return parse_def(list);
     if(accept(TYPE_T, list)) return parse_type(list);
+    if(accept(HOLE_T, list)) return parse_hole(list);
     return 0;
 }
 

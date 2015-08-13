@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "term.h"
 #include "utils.h"
 #include "environment.h"
@@ -139,11 +140,11 @@ void evaluate_term(term *t, environment *env)
 
 int compare_types(term *t1, term *t2)
 {
-    //printf("Comparing ");
-    //print_term(t1);
-    //printf(" and ");
-    //print_term(t2);
-    //printf("\n");
+    if(DEBUG) printf("Comparing ");
+    if(DEBUG) print_term(t1);
+    if(DEBUG) printf(" and ");
+    if(DEBUG) print_term(t2);
+    if(DEBUG) printf("\n");
 
     if(!t1 && !t2) return 1;
     if(!t1 || !t2) return 0;
@@ -153,30 +154,42 @@ int compare_types(term *t1, term *t2)
     return (compare_types(t1->left, t2->left) && compare_types(t1->right, t2->right));
 }
 
+term *resolve(term *t, environment *env, term_list *context)
+{
+    if(DEBUG) printf("Resolving: ");
+    if(DEBUG) print_term(t);
+    if(DEBUG) printf("\n");
+    
+    term *l = 0;
+    if (t->name) l = get_environment(env, t->name);
+    else l = get_term_list(context, t->n);
+    if (!l){
+        if(DEBUG) printf("VAR not found in env or context\n");
+        return 0;
+    }
+    if(DEBUG) printf("Found: ");
+    if(DEBUG) print_term(l->annotation);
+    if(DEBUG) printf("\n");
+    return l->annotation;
+}
+
 term *type_infer(term *t, environment *env, term_list *context)
 {
     if(t->kind == VAR){
-        term *l = 0;
-        if (t->name) l = get_environment(env, t->name);
-        else l = get_term_list(context, t->n);
-        if (!l) {
-            //printf("Couldn't find var ");
-            //print_term(t);
-            //printf(" in context or env\n");
-            return 0;
-        }
-        term *m = copy_term(l->annotation);
-        //printf("Before increment:");
-        //print_term(m);
-        //printf("\n");
+        if (t->annotation) return copy_term(t->annotation);
+        term *l = resolve(t, env, context);
+        term *m = copy_term(l);
+        if(DEBUG) printf("Before increment:");
+        if(DEBUG) print_term(m);
+        if(DEBUG) printf("\n");
         increment(m, t->n+1, 0);
-        //printf("increment by %d\n", t->n+1);
+        if(DEBUG) printf("increment by %d\n", t->n+1);
 
-        //printf("Inferred ");
-        //print_term(t);
-        //printf(" has type ");
-        //print_term(m);
-        //printf("\n");
+        if(DEBUG) printf("Inferred ");
+        if(DEBUG) print_term(t);
+        if(DEBUG) printf(" has type ");
+        if(DEBUG) print_term(m);
+        if(DEBUG) printf("\n");
 
         return m;
     }
@@ -186,11 +199,12 @@ term *type_infer(term *t, environment *env, term_list *context)
         evaluate_term(arg, env);
         context = push_term_list(context, arg);
         term* infer = type_infer(body, env, context);
+        evaluate_term(infer, env);
         context = pop_term_list(context);
         if(!infer){
-            //printf("Couldn't infer Body type ");
-            //print_term(body);
-            //printf("\n");
+            if(DEBUG) printf("Couldn't infer Body type ");
+            if(DEBUG) print_term(body);
+            if(DEBUG) printf("\n");
             return 0;
         }
         term *pi = calloc(1, sizeof(term));
@@ -198,11 +212,11 @@ term *type_infer(term *t, environment *env, term_list *context)
         pi->left = copy_term(arg);
         pi->right = infer;
 
-        //printf("Inferred ");
-        //print_term(t);
-        //printf(" has type ");
-        //print_term(pi);
-        //printf("\n");
+        if(DEBUG) printf("Inferred ");
+        if(DEBUG) print_term(t);
+        if(DEBUG) printf(" has type ");
+        if(DEBUG) print_term(pi);
+        if(DEBUG) printf("\n");
 
         return pi;
     }
@@ -210,46 +224,48 @@ term *type_infer(term *t, environment *env, term_list *context)
         term *f = t->left;
         term *x = t->right;
         term *pi = type_infer(f, env, context);
+        evaluate_term(pi, env);
         if(!pi) return 0;
         if (pi->kind != PI){
-            //printf("APP doesn't have PI type\n");
+            if(DEBUG) print_term(f);
+            if(DEBUG) printf(" doesn't have PI type\n");
             free_term(pi);
             return 0;
         }
         term *T = pi->right;
         term *S = pi->left->annotation;
         if (!S){
-            //printf("PI variable doesn't have annotation\n");
+            if(DEBUG) printf("PI variable doesn't have annotation\n");
             return 0;
         }
         int check = type_check(x, env, context, S);
         if (!check) return 0;
         term *sub = copy_term(T);
-        //printf("Subbing ");
-        //print_term(x);
-        //printf(" in ");
-        //print_term(sub);
-        //printf("\n");
+        if(DEBUG) printf("Subbing ");
+        if(DEBUG) print_term(x);
+        if(DEBUG) printf(" in ");
+        if(DEBUG) print_term(sub);
+        if(DEBUG) printf("\n");
         substitute(sub, x, 0);
 
         free_term(pi);
 
-        //printf("Inferred ");
-        //print_term(t);
-        //printf(" has type ");
-        //print_term(sub);
-        //printf("\n");
+        if(DEBUG) printf("Inferred ");
+        if(DEBUG) print_term(t);
+        if(DEBUG) printf(" has type ");
+        if(DEBUG) print_term(sub);
+        if(DEBUG) printf("\n");
         return sub;
     }
     if(t->kind == PI){
         term *base = calloc(1, sizeof(term));
         base->kind = TYPE;
 
-        //printf("Inferred ");
-        //print_term(t);
-        //printf(" has type ");
-        //print_term(base);
-        //printf("\n");
+        if(DEBUG) printf("Inferred ");
+        if(DEBUG) print_term(t);
+        if(DEBUG) printf(" has type ");
+        if(DEBUG) print_term(base);
+        if(DEBUG) printf("\n");
 
         return base;
     }
@@ -258,17 +274,40 @@ term *type_infer(term *t, environment *env, term_list *context)
         base->kind = TYPE;
         base->n = t->n+1;
 
-        //printf("Inferred ");
-        //print_term(t);
-        //printf(" has type ");
-        //print_term(base);
-        //printf("\n");
+        if(DEBUG) printf("Inferred ");
+        if(DEBUG) print_term(t);
+        if(DEBUG) printf(" has type ");
+        if(DEBUG) print_term(base);
+        if(DEBUG) printf("\n");
 
         return base;
     }
     if(t->kind == DEF){
         if(t->left->annotation){
+
+            if(DEBUG)printf("Before: ");
+            if(DEBUG)print_term(t->left->annotation);
+            if(DEBUG)printf("\nAfter: ");
+
+            evaluate_term(t->left->annotation, env);
+
+            if(DEBUG)print_term(t->left->annotation);
+            if(DEBUG)printf("\n");
+            if(DEBUG)print_term(t->left->annotation);
+
             int check = type_check(t->right, env, context, t->left->annotation);
+            if(!check){
+                term *lt = type_infer(t->left, env, context);
+                term *rt = type_infer(t->right, env, context);
+                printf("Left: ");
+                print_term(lt);
+                printf("\n");
+                printf("Right: ");
+                print_term(rt);
+                printf("\n");
+                free_term(lt);
+                free_term(rt);
+            }
             if(check) return copy_term(t->left->annotation);
         }else{
             term *infer = type_infer(t->right, env, context);    
@@ -283,13 +322,19 @@ term *type_infer(term *t, environment *env, term_list *context)
 int type_check(term *t, environment *env, term_list *context, term *type)
 {
     evaluate_term(type, env);
-    //printf("check ");
-    //print_term(t);
-    //printf(" is type ");
-    //print_term(type);
-    //printf("\n");
-    //printf("Context: ");
-    //print_context(c);
+    if(DEBUG) printf("check ");
+    if(DEBUG) print_term(t);
+    if(DEBUG) printf(" is type ");
+    if(DEBUG) print_term(type);
+    if(DEBUG) printf("\n");
+    if(DEBUG) printf("Context: ");
+    if(DEBUG) print_term_list(context);
+    if(t->kind == HOLE){
+        printf("Hole should have type: ");
+        print_term_r(type, context);
+        printf("\n");
+        return 1;
+    }
     //VAR, APP, FUN, IND, PI, TYPE, CONS, DEF
     if(type->kind == PI){
         if(t->kind == FUN){
@@ -298,7 +343,7 @@ int type_check(term *t, environment *env, term_list *context, term *type)
             evaluate_term(arg, env);
             if(arg->annotation){
                 if(!compare_types(arg->annotation, arg_type)){
-                    //printf("Arguement doesn't match annotation\n");
+                    if(DEBUG) printf("Arguement doesn't match annotation\n");
                     return 0;
                 }
             }else{
@@ -316,42 +361,52 @@ int type_check(term *t, environment *env, term_list *context, term *type)
     }else if(type->kind == TYPE){
         if(t->kind == PI || t->kind == TYPE || t->kind == IND) return 1;
         if(t->kind == FUN) return 0;
-    } else if(type->kind == VAR){
+    } else if (type->kind == VAR){
 
+    } else if (type->kind == APP){
+        term *infer = type_infer(t, env, context);
+        evaluate_term(infer, env);
+        int compare = compare_types(infer, type);
+        if(!compare){
+            printf("APPs don't match: ");
+            printf("\n");
+            print_term(infer);
+            printf("\n");
+            print_term(type);
+            printf("\n");
+        }
+        free_term(infer);
+        return compare;
     } else {
-        //printf("Bad: ");
-        //print_term(type);
-        //printf("\n");
+        if(DEBUG) printf("Bad: ");
+        if(DEBUG) print_term(type);
+        if(DEBUG) printf("\n");
+        assert(0);
         error("Fuck");
     }
 
     if (t->kind == CONS || t->kind == DEF) return 0;
 
     if (t->kind == VAR){
-        term *l = 0;
-        if (t->name) l = get_environment(env, t->name);
-        else l = get_term_list(context, t->n);
-        if (!l){
-            //printf("VAR not found in env or context\n");
-            return 0;
-        }
-        term *m = copy_term(l->annotation);
+        term *l = resolve(t, env, context);
+        term *m = copy_term(l);
         if(!m){
-            //print_term(l);
-            //printf(" No annotation for VAR\n");
+            if(DEBUG) print_term(l);
+            if(DEBUG) printf(" No annotation for VAR\n");
         }
         increment(m, t->n+1, 0);
         int compare = compare_types(m, type);
         free_term(m);
         if (compare) return 1;
-        //printf("VAR doesn't match type\n");
+        if(DEBUG) printf("VAR doesn't match type\n");
         return 0;
     } else if (t->kind == APP){
         term *infer = type_infer(t, env, context);
+        evaluate_term(infer, env);
         int compare = compare_types(infer, type);
         free_term(infer);
         if (compare) return 1;
-        //printf("APP doesn't match type\n");
+        if(DEBUG) printf("APP doesn't match type\n");
         return 0;
     }
     else{
@@ -367,15 +422,15 @@ typedef struct index_list{
 
 void debruijn_r(term *t, index_list *list)
 {
-    //printf("debruge\n");
-    //print_term(t);
-    //printf("\n");
+    if(DEBUG) printf("debruge\n");
+    if(DEBUG) print_term(t);
+    if(DEBUG) printf("\n");
     if (!t) return;
     if (t->annotation) debruijn_r(t->annotation, list);
     if (t->kind == VAR){
         int count = 0;
         while(list){
-            //printf("...%s...", list->name);
+            if(DEBUG) printf("...%s...", list->name);
             if(strcmp(list->name, t->name) == 0){
                 t->n = count;
                 free(t->name);
@@ -385,9 +440,10 @@ void debruijn_r(term *t, index_list *list)
             ++count;
             list = list->next;
         }
-        //printf("\n");
+        if(DEBUG) printf("\n");
         t->n = count;
     }else if (t->kind == DEF){
+        debruijn_r(t->left->annotation, list);
         debruijn_r(t->right, list);
     }else if (t->kind == APP){
         debruijn_r(t->left, list);
@@ -396,11 +452,11 @@ void debruijn_r(term *t, index_list *list)
         debruijn_r(t->left->annotation, list);
         index_list *top = calloc(1, sizeof(index_list));
         top->name = t->left->name;
-        //printf("Adding %s to list\n", top->name);
+        if(DEBUG) printf("Adding %s to list\n", top->name);
 
         top->next = list;
         debruijn_r(t->right, top);
-        //printf("Popping %s from list\n", top->name);
+        if(DEBUG) printf("Popping %s from list\n", top->name);
         free(top);
     }else if (t->kind == IND){
     }else if (t->kind == TYPE){
@@ -412,98 +468,88 @@ void debruijn(term *t)
     debruijn_r(t, 0);
 }
 
-void print_term_r(term *t, index_list *list);
-
-void print_term_fun(term *t, index_list *list)
+void print_term_fun(term *t, term_list *context)
 {
     printf("(fun ");
-    index_list *top = list;
+    term_list *front = context;
     while(t && t->kind == FUN){
-        print_term_r(t->left, top);
-        index_list *next = top;
-        top = calloc(1, sizeof(index_list));
-        top->name = t->left->name;
-        top->next = next;
+        print_term_r(t->left, context);
+        context = push_term_list(context, t->left);
         t = t->right;
         printf(" ");
     }
     /*
-    if(t->annotation){
-        printf(" : ");
-        print_term_r(t->annotation, list);
-    }
-    */
+       if(t->annotation){
+       printf(" : ");
+       print_term_r(t->annotation, list);
+       }
+     */
     printf(" => ");
 
-    print_term_r(t, top);
-    while(top != list){
-        index_list *next = top->next;
-        free(top);
-        top = next;
+    print_term_r(t, context);
+    while(context != front){
+        context = pop_term_list(context);
     }
 
     printf(")");
 }
 
-void print_term_r(term *t, index_list *list)
+void print_term_r(term *t, term_list *context)
 {
     if(!t){
         printf("Null Term");
         return;
     }
-    index_list *front = list;
+    term_list *front = context;
     if (t->kind == VAR){
         if(t->name && strcmp(t->name, "_")==0){
             print_term_r(t->annotation, front);
             return;
         }
-
         if(t->name){
             printf("%s", t->name);
         }else{
-            int i;
-            for(i = 0; i < t->n; ++i){
-                if(!list) break;
-                list = list->next;
-            }
-            if(!list) printf("%d", t->n);
-            else printf("%s", list->name);
+            term *lookup = get_term_list(context, t->n);
+            if(!lookup) printf("%d", t->n);
+            else printf("%s", lookup->name);
         }
         /*
-        if(t->annotation){
-            printf(":(");
-            print_term_r(t->annotation, front);
-            printf(")");
-        }
-        */
+           if(t->annotation){
+           printf(":(");
+           print_term_r(t->annotation, front);
+           printf(")");
+           }
+         */
     }else if (t->kind == DEF){
         printf("def ");
-        print_term_r(t->left, list);
+        print_term_r(t->left, context);
         printf(" = ");
-        print_term_r(t->right, list);
+        print_term_r(t->right, context);
     }else if (t->kind == APP){
         printf("(");
-        print_term_r(t->left, list);
+        print_term_r(t->left, context);
         printf(" ");
-        print_term_r(t->right, list);
+        print_term_r(t->right, context);
         printf(")");
     }else if (t->kind == FUN){
-        print_term_fun(t, list);
+        print_term_fun(t, context);
     }else if (t->kind == IND){
     }else if (t->kind == PI){
         printf("(");
-        print_term_r(t->left, list);
+        print_term_r(t->left, context);
+        printf(":");
+        print_term_r(t->left->annotation, context);
         printf(" -> ");
-        index_list *top = calloc(1, sizeof(index_list));
-        top->name = t->left->name;
-        top->next = list;
+        context = push_term_list(context, t->left);
 
-        print_term_r(t->right, top);
+        print_term_r(t->right, context);
 
-        free(top);
+        context = pop_term_list(context);
         printf(")");
     }else if (t->kind == TYPE){
         printf("Type");
+    }else if (t->kind == HOLE){
+        printf(". ");
     }
 }
 

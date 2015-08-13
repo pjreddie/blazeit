@@ -1,4 +1,5 @@
-DEBUG=0
+DEBUG=1
+PRINT=0
 
 VPATH=./src/
 EXEC=blazeit
@@ -11,6 +12,12 @@ CFLAGS=-Wall -Wfatal-errors
 
 ifeq ($(DEBUG), 1) 
 OPTS=-O0 -g
+endif
+
+ifeq ($(PRINT), 1)
+CFLAGS+= -DDEBUG 
+else
+CFLAGS+= -DDEBUG=0
 endif
 
 CFLAGS+=$(OPTS)

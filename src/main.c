@@ -20,6 +20,7 @@ void blazeit(FILE *input, environment *env)
             break;
         }
         term *t = parse_string(line);
+        if(!t) continue;
         if(debug){
             printf("Input: ");
             print_term(t);

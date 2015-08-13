@@ -5,7 +5,7 @@
 struct environment;
 
 typedef enum {
-    VAR, APP, FUN, IND, PI, TYPE, CONS, DEF
+    VAR, APP, FUN, IND, PI, TYPE, CONS, DEF, HOLE
 } term_kind;
 
 struct term;
@@ -21,7 +21,6 @@ typedef struct term {
     struct term **constructors; 
 } term;
 
-void print_term(term *t);
 term *copy_term(term *t);
 void debruijn(term *t);
 void free_term(term *t);
@@ -30,4 +29,6 @@ int type_check(term *t, struct environment *env, term_list *context, term *type)
 term *type_infer(term *t, struct environment *env, term_list *context);
 void evaluate_term(term *t, struct environment *env);
 
+void print_term(term *t);
+void print_term_r(term *t, term_list *context);
 #endif

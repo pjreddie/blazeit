@@ -43,6 +43,9 @@ void print_token(token_kind kind)
         case UNDER_T:
             printf("_ ");
             break;
+        case HOLE_T:
+            printf(". ");
+            break;
     }
 }
 
@@ -86,6 +89,12 @@ token_list *tokenize(char *s)
         }
         if (*s == ')'){
             curr->kind = CLOSE_T;
+            ++s;
+            ++i;
+            continue;
+        }
+        if (*s == '.'){
+            curr->kind = HOLE_T;
             ++s;
             ++i;
             continue;

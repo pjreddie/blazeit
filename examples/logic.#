@@ -1,0 +1,16 @@
+def prod = fun A:Type B:Type => X:Type -> (A -> B -> X) -> X
+def sum = fun A:Type B:Type => X:Type -> (A -> X) -> (B -> X) -> X
+def fst:(A:Type -> B:Type -> (prod A B) -> A) = fun A B p => p A (fun x y => x)
+def snd:(A:Type -> B:Type -> (prod A B) -> B) = fun A B p => p B (fun x y => y)
+def lft:(A:Type -> B:Type -> A -> (sum A B)) = fun A B x X ifl ifr => ifl x
+def rgt:(A:Type -> B:Type -> B -> (sum A B)) = fun A B x X ifl ifr => ifr x
+def pair:(A:Type -> B:Type -> A -> B -> (prod A B)) = fun A B a b x f => f a b
+def easy:(A:Type ->B:Type -> (prod A B) -> A) = fun A B x => fst A B x
+def prod_commute:(A:Type ->B:Type -> (prod A B) -> (prod B A)) = fun A B p => pair B A (snd A B p) (fst A B p)
+def demoivre_1:(A:Type ->B:Type -> C:Type -> (sum (prod A B) (prod A C)) -> (prod A (sum B C))) = fun A B C s => s (prod A (sum B C)) (fun l => pair A (sum B C) (fst A B l) (lft B C (snd A B l))) (fun r => pair A (sum B C) (fst A C r) (rgt B C (snd A C r)))
+def demoivre_2:(A:Type ->B:Type -> C:Type -> (prod A (sum B C)) -> (sum (prod A B) (prod A C))) = fun A B C p => (snd A (sum B C) p) (sum (prod A B) (prod A C)) (fun l => lft (prod A B) (prod A C) (pair A B (fst A (sum B C) p) l)) (fun r => rgt (prod A B) (prod A C) (pair A C (fst A (sum B C) p) r))
+def eq:(A:Type -> A -> A -> Type) = fun A a b => P:(A -> Type) -> (P a) -> (P b)
+def refl : (A:Type -> a:A -> eq A a a) = fun A a P Pa => Pa
+def subst : (A:Type -> P:(A -> Type) -> a:A -> b:A -> (eq A a b) -> (P a) -> (P b)) = fun A P a b e Pa => e P Pa
+def comp:(A:Type -> B:Type -> C:Type -> (A->B) -> (B->C) -> (A->C)) = fun A B C f g x => g (f x)
+def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> (eq A a b) -> (eq B (f a) (f b))) = fun A B f a b e P Pfa => e (comp A B Type f P) Pfa

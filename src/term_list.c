@@ -7,10 +7,10 @@
 term *get_term_list(term_list *l, int n)
 {
     int i;
-    for(i = 0; i < n; ++i){
-        if(!l) return 0;
+    for(i = 0; i < n && l; ++i){
         l = l->next;
     }
+    if(!l) return 0;
     term *lookup = l->value;
     //printf("Lookup: ");
     //print_term(lookup);
