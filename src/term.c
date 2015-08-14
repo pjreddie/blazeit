@@ -30,6 +30,12 @@ term *copy_term(term *t)
     if (t->kind == IND){
         not_implemented();
     }
+    if(t->constructors){
+        int i;
+        for(i = 0; i < t->n; ++i){
+            copy->constructors[i] = copy_term(t->constructors[i]);
+        }
+    }
     return copy;
 }
 
@@ -525,6 +531,19 @@ void print_term_r(term *t, term_list *context)
         print_term_r(t->left, context);
         printf(" = ");
         print_term_r(t->right, context);
+    }else if (t->kind == IND){
+        printf("ind ");
+        print_term_r(t->left, context);
+        printf(" = ");
+        int i;
+        for(i = 0; i < t->n; ++i){
+            if(i != 0) printf(" | ");
+            print_term_r(t->constructors[i], context);
+            if(t->constructors[i]->annotation){
+                printf(":");
+                print_term_r(t->constructors[i]->annotation, context);
+            }
+        }
     }else if (t->kind == APP){
         printf("(");
         print_term_r(t->left, context);
@@ -537,8 +556,6 @@ void print_term_r(term *t, term_list *context)
     }else if (t->kind == PI){
         printf("(");
         print_term_r(t->left, context);
-        printf(":");
-        print_term_r(t->left->annotation, context);
         printf(" -> ");
         context = push_term_list(context, t->left);
 

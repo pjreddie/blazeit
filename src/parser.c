@@ -107,6 +107,25 @@ term *parse_def(token_list **list)
     return t;
 }
 
+term *parse_ind(token_list **list)
+{
+    term *t = calloc(1, sizeof(term));
+    t->kind = IND;
+    t->left = parse(list);
+    t->name = copy_string(t->left->name);
+    t->constructors = calloc(1, sizeof(term*));
+    expect(EQUAL_T, list);
+    accept(OR_T, list);
+    int count = 0;
+    t->constructors[count++] = parse(list);
+    while(accept(OR_T, list)){
+        t->constructors = realloc(t->constructors, (count+1)*sizeof(term*));
+        t->constructors[count++] = parse(list);
+    }
+    t->n = count;
+    return t;
+}
+
 term *parse_type(token_list **list)
 {
     term *t = calloc(1, sizeof(term));
@@ -176,12 +195,13 @@ term *parse_hole(token_list **list)
 
 term *parse_term(token_list **list)
 {
-    if(accept(OPEN_T, list)) return parse_subterm(list);
-    if(accept(FUN_T, list)) return parse_fun(list);
-    if(peek(VAR_T, list) || peek(UNDER_T,list)) return parse_var(list);
-    if(accept(DEF_T, list)) return parse_def(list);
-    if(accept(TYPE_T, list)) return parse_type(list);
-    if(accept(HOLE_T, list)) return parse_hole(list);
+    if (accept(OPEN_T, list)) return parse_subterm(list);
+    if (accept(FUN_T, list)) return parse_fun(list);
+    if (peek(VAR_T, list) || peek(UNDER_T,list)) return parse_var(list);
+    if (accept(DEF_T, list)) return parse_def(list);
+    if (accept(IND_T, list)) return parse_ind(list);
+    if (accept(TYPE_T, list)) return parse_type(list);
+    if (accept(HOLE_T, list)) return parse_hole(list);
     return 0;
 }
 
@@ -190,8 +210,9 @@ term *parse(token_list **list)
     term *t = parse_term(list);
     if(!(*list)) return t;
     if(!t) return 0;
+    t = parse_application(list, t);
     if(accept(TO_T, list)) return parse_pi(list, t);
-    else return parse_application(list, t);
+    return t;
 }
 
 term *parse_string(char *s)

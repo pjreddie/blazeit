@@ -10,6 +10,9 @@ void print_token(token_kind kind)
         case NONE_T:
             printf("NONE");
             break;
+        case OR_T:
+            printf(" | ");
+            break;
         case OPEN_T:
             printf("( ");
             break;
@@ -33,6 +36,9 @@ void print_token(token_kind kind)
             break;
         case DEF_T:
             printf("def ");
+            break;
+        case IND_T:
+            printf("ind ");
             break;
         case COLON_T:
             printf(": ");
@@ -93,6 +99,12 @@ token_list *tokenize(char *s)
             ++i;
             continue;
         }
+        if (*s == '|'){
+            curr->kind = OR_T;
+            ++s;
+            ++i;
+            continue;
+        }
         if (*s == '.'){
             curr->kind = HOLE_T;
             ++s;
@@ -125,6 +137,18 @@ token_list *tokenize(char *s)
                 curr->kind = TYPE_T;
                 s += 4;
                 i += 4;
+                continue;
+            }
+        }
+        if (*s == 'i'){
+            if (strncmp(s, "ind", 3) == 0){
+                if(curr->prev){
+                    fprintf(stderr, "Inductive types must come first!");
+                    return 0;
+                }
+                curr->kind = IND_T;
+                s += 3;
+                i += 3;
                 continue;
             }
         }

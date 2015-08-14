@@ -14,3 +14,6 @@ def refl : (A:Type -> a:A -> eq A a a) = fun A a P Pa => Pa
 def subst : (A:Type -> P:(A -> Type) -> a:A -> b:A -> (eq A a b) -> (P a) -> (P b)) = fun A P a b e Pa => e P Pa
 def comp:(A:Type -> B:Type -> C:Type -> (A->B) -> (B->C) -> (A->C)) = fun A B C f g x => g (f x)
 def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> (eq A a b) -> (eq B (f a) (f b))) = fun A B f a b e P Pfa => e (comp A B Type f P) Pfa
+def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> eq A a b -> (eq B (f a) (f b))) = fun A B f a b e P Pfa => e (comp A B Type f P) Pfa
+ind bool = true | false
+ind nat = O:nat | S:(nat->nat)

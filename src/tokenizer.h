@@ -2,7 +2,7 @@
 #define TOKENIZER_H
 
 typedef enum {
-    NONE_T, OPEN_T, CLOSE_T, FUN_T, VAR_T, ARR_T, TO_T, DEF_T, COLON_T, EQUAL_T, TYPE_T, UNDER_T, HOLE_T
+    NONE_T, OPEN_T, CLOSE_T, FUN_T, VAR_T, ARR_T, TO_T, DEF_T, COLON_T, EQUAL_T, TYPE_T, UNDER_T, HOLE_T, IND_T, OR_T
 } token_kind;
 
 typedef struct token_list{
