@@ -20,3 +20,5 @@ def theorem_false = (A:Type -> A)
 ind bool = true | false
 ind nat = O:nat | S:(nat->nat)
 S (S O)
+def add1 = fun n:nat => S n
+add1 (S (S O))

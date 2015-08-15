@@ -596,9 +596,17 @@ void print_term_r(term *t, term_list *context)
         printf("%s", t->name);
     }else if (t->kind == APP){
         printf("(");
-        print_term_r(t->left, context);
+        if(t->left->kind == CONS){
+            printf("%s", t->left->name);
+        }else{
+            print_term_r(t->left, context);
+        }
         printf(" ");
-        print_term_r(t->right, context);
+        if(t->right->kind == CONS){
+            printf("%s", t->right->name);
+        }else{
+            print_term_r(t->right, context);
+        }
         printf(")");
     }else if (t->kind == FUN){
         print_term_fun(t, context);
