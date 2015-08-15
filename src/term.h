@@ -5,7 +5,7 @@
 struct environment;
 
 typedef enum {
-    VAR, APP, FUN, IND, PI, TYPE, CONS, DEF, HOLE
+    VAR, APP, FUN, IND, PI, TYPE, CONS, DEF, HOLE, ELIM
 } term_kind;
 
 struct term;

@@ -107,22 +107,22 @@ term *parse_def(token_list **list)
     return t;
 }
 
-term *parse_ind(token_list **list)
+term *parse_cons(token_list **list)
 {
-    term *t = calloc(1, sizeof(term));
-    t->kind = IND;
-    t->left = parse(list);
-    t->name = copy_string(t->left->name);
-    t->constructors = calloc(1, sizeof(term*));
-    expect(EQUAL_T, list);
-    accept(OR_T, list);
-    int count = 0;
-    t->constructors[count++] = parse(list);
-    while(accept(OR_T, list)){
-        t->constructors = realloc(t->constructors, (count+1)*sizeof(term*));
-        t->constructors[count++] = parse(list);
+    if(accept(OPEN_T, list)){
+        term *sub = parse_cons(list);
+        expect(CLOSE_T, list);
+        return sub;
     }
-    t->n = count;
+
+    token_list *token = *list;
+    expect(VAR_T, list);
+    term *t = calloc(1, sizeof(term));
+    t->kind = CONS;
+    t->name = copy_string(token->value);
+    if(accept(COLON_T, list)){
+        t->annotation = parse(list);
+    }
     return t;
 }
 
@@ -149,6 +149,37 @@ term *parse_var(token_list **list)
     if(accept(COLON_T, list)){
         t->annotation = parse_term(list);
     }
+    return t;
+}
+
+term *parse_ind(token_list **list)
+{
+    term *t = parse_var(list);
+    t->kind = IND;
+
+    if(!t->annotation){
+        term *type = calloc(1, sizeof(term));
+        type->kind = TYPE;
+        t->annotation = type;
+    }
+    term *refer = copy_term(t);
+
+    t->constructors = calloc(1, sizeof(term*));
+
+    expect(EQUAL_T, list);
+    accept(OR_T, list);
+    int count = 0;
+    do {
+        t->constructors = realloc(t->constructors, (count+1)*sizeof(term*));
+        term *cons = parse_cons(list);
+        if (!cons->annotation){
+            cons->annotation = copy_term(refer);
+        }
+        t->constructors[count] = cons;
+        ++count;
+    } while (accept(OR_T, list));
+    t->n = count;
+    free_term(refer);
     return t;
 }
 

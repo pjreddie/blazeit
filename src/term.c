@@ -27,10 +27,13 @@ term *copy_term(term *t)
     copy->annotation = copy_term(t->annotation);
     if (t->name) copy->name = copy_string(t->name);
     copy->n = t->n;
+    /*
     if (t->kind == IND){
         not_implemented();
     }
+    */
     if(t->constructors){
+        copy->constructors = calloc(t->n, sizeof(term*));
         int i;
         for(i = 0; i < t->n; ++i){
             copy->constructors[i] = copy_term(t->constructors[i]);
@@ -100,6 +103,32 @@ void replace_term(term *old, term *new)
     free(copy);
 }
 
+term *resolve(term *t, environment *env, term_list *context)
+{
+    if(DEBUG) printf("Resolving: ");
+    if(DEBUG) print_term(t);
+    if(DEBUG) printf("\n");
+    
+    term *l = 0;
+    if (t->name) {
+        l = get_environment(env, t->name);
+        if(l){
+            if(l->kind == DEF){
+                l = l->right;
+            }
+        }
+    }
+    else l = get_term_list(context, t->n);
+    if (!l){
+        if(DEBUG) printf("VAR not found in env or context\n");
+        return 0;
+    }
+    if(DEBUG) printf("Found: ");
+    if(DEBUG) print_term(l->annotation);
+    if(DEBUG) printf("\n");
+    return l->annotation;
+}
+
 void evaluate_term(term *t, environment *env)
 {
     if(!t) return;
@@ -110,10 +139,24 @@ void evaluate_term(term *t, environment *env)
         t->right->annotation = copy_term(t->left->annotation);
         add_environment(env, t);
     }
+    if (t->kind == IND){
+        int i;
+        add_environment(env, t);
+        for (i = 0; i < t->n; ++i) {
+            term *cons = t->constructors[i];
+            add_environment(env, cons);
+        }
+    }
+    if (t->kind == CONS){
+        // Um, do nothing
+    }
     if (t->kind == VAR){
         term *lookup = 0;
         if (t->name) lookup = get_environment(env, t->name);
         if (lookup){
+            if(lookup->kind == DEF){
+                lookup = lookup->right;
+            }
             replace_term(t, lookup);
             evaluate_term(t, env);
         }
@@ -157,30 +200,19 @@ int compare_types(term *t1, term *t2)
     if(t1->kind != t2->kind) return 0;
     if(t1->kind == VAR) return t1->n == t2->n;
     if(t1->kind == TYPE && t2->kind == TYPE) return 1;
+    if(t1->kind == IND && t2->kind == IND) return (strcmp(t1->name, t2->name) == 0);
     return (compare_types(t1->left, t2->left) && compare_types(t1->right, t2->right));
-}
-
-term *resolve(term *t, environment *env, term_list *context)
-{
-    if(DEBUG) printf("Resolving: ");
-    if(DEBUG) print_term(t);
-    if(DEBUG) printf("\n");
-    
-    term *l = 0;
-    if (t->name) l = get_environment(env, t->name);
-    else l = get_term_list(context, t->n);
-    if (!l){
-        if(DEBUG) printf("VAR not found in env or context\n");
-        return 0;
-    }
-    if(DEBUG) printf("Found: ");
-    if(DEBUG) print_term(l->annotation);
-    if(DEBUG) printf("\n");
-    return l->annotation;
 }
 
 term *type_infer(term *t, environment *env, term_list *context)
 {
+    if(t->kind == IND){
+        return copy_term(t->annotation);
+    }
+    if(t->kind == CONS){
+        print_term(t);
+        return copy_term(t->annotation);
+    }
     if(t->kind == VAR){
         if (t->annotation) return copy_term(t->annotation);
         term *l = resolve(t, env, context);
@@ -335,6 +367,10 @@ int type_check(term *t, environment *env, term_list *context, term *type)
     if(DEBUG) printf("\n");
     if(DEBUG) printf("Context: ");
     if(DEBUG) print_term_list(context);
+    if(t->kind == IND){
+        printf("IND always checks");
+        return 1;
+    }
     if(t->kind == HOLE){
         printf("Hole should have type: ");
         print_term_r(type, context);
@@ -383,6 +419,12 @@ int type_check(term *t, environment *env, term_list *context, term *type)
         }
         free_term(infer);
         return compare;
+    } else if (type->kind == IND){
+        term *infer = type_infer(t, env, context);
+        evaluate_term(infer, env);
+        int compare = compare_types(infer, type);
+        free_term(infer);
+        return compare;
     } else {
         if(DEBUG) printf("Bad: ");
         if(DEBUG) print_term(type);
@@ -391,7 +433,7 @@ int type_check(term *t, environment *env, term_list *context, term *type)
         error("Fuck");
     }
 
-    if (t->kind == CONS || t->kind == DEF) return 0;
+    if (t->kind == DEF) return 0;
 
     if (t->kind == VAR){
         term *l = resolve(t, env, context);
@@ -479,7 +521,8 @@ void print_term_fun(term *t, term_list *context)
     printf("(fun ");
     term_list *front = context;
     while(t && t->kind == FUN){
-        print_term_r(t->left, context);
+        //print_term_r(t->left, context);
+        printf("%s", t->left->name);
         context = push_term_list(context, t->left);
         t = t->right;
         printf(" ");
@@ -500,6 +543,22 @@ void print_term_fun(term *t, term_list *context)
     printf(")");
 }
 
+void print_ind(term *t, term_list *context)
+{
+    if(t->n){
+        printf("ind ");
+        printf("%s", t->name);
+        printf(" = ");
+        int i;
+        for(i = 0; i < t->n; ++i){
+            if(i != 0) printf(" | ");
+            print_term_r(t->constructors[i], context);
+        }
+    }else{
+        printf("%s", t->name);
+    }
+}
+
 void print_term_r(term *t, term_list *context)
 {
     if(!t){
@@ -516,34 +575,25 @@ void print_term_r(term *t, term_list *context)
             printf("%s", t->name);
         }else{
             term *lookup = get_term_list(context, t->n);
-            if(!lookup) printf("%d", t->n);
+            if(!lookup){
+                printf("%d", t->n);
+                printf("\n");
+                print_term_list(context);
+                printf("\n");
+            }
             else printf("%s", lookup->name);
         }
-        /*
-           if(t->annotation){
-           printf(":(");
-           print_term_r(t->annotation, front);
-           printf(")");
-           }
-         */
+        if(t->annotation){
+            printf(":");
+            print_term_r(t->annotation, front);
+        }
     }else if (t->kind == DEF){
         printf("def ");
         print_term_r(t->left, context);
         printf(" = ");
         print_term_r(t->right, context);
     }else if (t->kind == IND){
-        printf("ind ");
-        print_term_r(t->left, context);
-        printf(" = ");
-        int i;
-        for(i = 0; i < t->n; ++i){
-            if(i != 0) printf(" | ");
-            print_term_r(t->constructors[i], context);
-            if(t->constructors[i]->annotation){
-                printf(":");
-                print_term_r(t->constructors[i]->annotation, context);
-            }
-        }
+        printf("%s", t->name);
     }else if (t->kind == APP){
         printf("(");
         print_term_r(t->left, context);
@@ -552,16 +602,33 @@ void print_term_r(term *t, term_list *context)
         printf(")");
     }else if (t->kind == FUN){
         print_term_fun(t, context);
-    }else if (t->kind == IND){
+    }else if (t->kind == CONS){
+        printf("%s", t->name);
+        if(t->annotation){
+            printf(":");
+            print_term_r(t->annotation, context);
+        }
     }else if (t->kind == PI){
         printf("(");
         print_term_r(t->left, context);
+        /*
+           if(t->left->annotation){
+           printf(":");
+           print_term_r(t->left->annotation, context);
+           }
+         */
         printf(" -> ");
-        context = push_term_list(context, t->left);
-
-        print_term_r(t->right, context);
-
-        context = pop_term_list(context);
+        term *next = t;
+        term_list *top = context;
+        while(next->right->kind == PI){
+            context = push_term_list(context, next->left);
+            print_term_r(next->right->left, context);
+            printf(" -> ");
+            next = next->right;
+        }
+        context = push_term_list(context, next->left);
+        print_term_r(next->right, context);
+        while(top != context) context = pop_term_list(context);
         printf(")");
     }else if (t->kind == TYPE){
         printf("Type");

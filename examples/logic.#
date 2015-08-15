@@ -11,9 +11,12 @@ def demoivre_1:(A:Type ->B:Type -> C:Type -> (sum (prod A B) (prod A C)) -> (pro
 def demoivre_2:(A:Type ->B:Type -> C:Type -> (prod A (sum B C)) -> (sum (prod A B) (prod A C))) = fun A B C p => (snd A (sum B C) p) (sum (prod A B) (prod A C)) (fun l => lft (prod A B) (prod A C) (pair A B (fst A (sum B C) p) l)) (fun r => rgt (prod A B) (prod A C) (pair A C (fst A (sum B C) p) r))
 def eq:(A:Type -> A -> A -> Type) = fun A a b => P:(A -> Type) -> (P a) -> (P b)
 def refl : (A:Type -> a:A -> eq A a a) = fun A a P Pa => Pa
-def subst : (A:Type -> P:(A -> Type) -> a:A -> b:A -> (eq A a b) -> (P a) -> (P b)) = fun A P a b e Pa => e P Pa
+def subst : (A:Type -> P:(A -> Type) -> a:A -> b:A -> eq A a b -> P a -> P b) = fun A P a b e Pa => e P Pa
 def comp:(A:Type -> B:Type -> C:Type -> (A->B) -> (B->C) -> (A->C)) = fun A B C f g x => g (f x)
-def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> (eq A a b) -> (eq B (f a) (f b))) = fun A B f a b e P Pfa => e (comp A B Type f P) Pfa
-def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> eq A a b -> (eq B (f a) (f b))) = fun A B f a b e P Pfa => e (comp A B Type f P) Pfa
+def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> eq A a b -> eq B (f a) (f b)) = fun A B f a b e P Pfa => e (comp A B Type f P) Pfa
+def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> eq A a b -> eq B (f a) (f b)) = fun A B f a b e P Pfa => e (comp A B Type f P) Pfa
+def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> eq A a b -> eq B (f a) (f b)) = fun A B f a b e => e (fun x => eq B (f a) (f x)) (refl B (f a))
+def theorem_false = (A:Type -> A)
 ind bool = true | false
 ind nat = O:nat | S:(nat->nat)
+S (S O)

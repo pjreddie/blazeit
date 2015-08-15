@@ -83,7 +83,7 @@ term *get_environment(environment *m, string key)
 {
     unsigned int h = hash_string(key)%m->size;
     term_list *l = find_term_list(m->elements[h], key);
-    if(l && l->value->right) return l->value->right;
+    if(l) return l->value;
     return 0;
 }
 
