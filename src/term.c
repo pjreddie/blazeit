@@ -17,6 +17,23 @@
     }
 */
 
+int compare_types(term *t1, term *t2)
+{
+    if(DEBUG) printf("Comparing ");
+    if(DEBUG) print_term(t1);
+    if(DEBUG) printf(" and ");
+    if(DEBUG) print_term(t2);
+    if(DEBUG) printf("\n");
+
+    if(!t1 && !t2) return 1;
+    if(!t1 || !t2) return 0;
+    if(t1->kind != t2->kind) return 0;
+    if(t1->kind == VAR) return t1->n == t2->n;
+    if(t1->kind == TYPE && t2->kind == TYPE) return 1;
+    if(t1->kind == IND && t2->kind == IND) return (strcmp(t1->name, t2->name) == 0);
+    return (compare_types(t1->left, t2->left) && compare_types(t1->right, t2->right));
+}
+
 term *copy_term(term *t)
 {
     if(!t) return 0;
@@ -81,6 +98,13 @@ void substitute(term *t, term *arg, int level)
         substitute(t->right, arg, level+1);
     }else if (t->kind == TYPE){
     }
+    else if(t->kind == ELIM){
+        int i;
+        substitute(t->left, arg, level);
+        for(i = 0; i < t->n; ++i){
+            substitute(t->constructors[i], arg, level);
+        }
+    }
 }
 
 void free_term(term *t)
@@ -129,23 +153,112 @@ term *resolve(term *t, environment *env, term_list *context)
     return l->annotation;
 }
 
+term *make_type()
+{
+    term *t = calloc(1, sizeof(term));
+    t->kind = TYPE;
+    return t;
+}
+
+term *make_variable(char *s)
+{
+    term *var = calloc(1, sizeof(term));
+    var->name = s;
+    var->kind = VAR;
+    return var;
+}
+
+term *make_pi(term *l, term *r)
+{
+    term *pi = calloc(1, sizeof(term));
+    pi->kind = PI;
+    pi->left = l;
+    pi->right = r;
+    return pi;
+}
+
+term *make_app(term *l, term *r)
+{
+    term *app = calloc(1, sizeof(term));
+    app->kind = APP;
+    app->left = l;
+    app->right = r;
+    return app;
+}
+
+term *make_eliminator(term *t)
+{
+    int i;
+
+    term *P = make_variable(copy_string("P"));
+    term *ind_type = make_variable(copy_string(t->name));
+
+    P->annotation = make_pi(make_variable(copy_string("_")), make_type());
+    P->annotation->left->annotation = ind_type;
+
+    term *fun = calloc(1, sizeof(term));
+    term *top = fun;
+    fun->name = append_string(t->name, "_elim");
+    fun->kind = FUN;
+    fun->left = P;
+
+    term *ret = make_variable(copy_string("ret"));
+    ret->kind = ELIM;
+    ret->n = t->n;
+    ret->constructors = calloc(ret->n, sizeof(term*));
+
+    for (i = 0; i < t->n; ++i) {
+        term *cons = t->constructors[i];
+
+        if(compare_types(cons->annotation, t)){
+        }
+        
+        fun->right = calloc(1, sizeof(term));
+        fun = fun->right;
+        fun->kind = FUN;
+
+        term *part = make_variable(append_string(cons->name, "_case"));
+        part->annotation = make_app(copy_term(P), copy_term(cons));
+        ret->constructors[i] = copy_term(part);
+        
+        fun->left = part;
+    }
+    fun->right = calloc(1, sizeof(term));
+    fun = fun->right;
+    fun->kind = FUN;
+
+    term *arg = make_variable(copy_string("arg"));
+    arg->annotation = copy_term(ind_type);
+
+    ret->annotation = make_app(copy_term(P), copy_term(arg));
+    ret->left = copy_term(arg);
+    
+    fun->left = arg;
+    fun->right = ret;
+
+    debruijn(top);
+
+    return top;
+}
+
 void evaluate_term(term *t, environment *env)
 {
-    if(!t) return;
+    if (!t) return;
     if (t->annotation) evaluate_term(t->annotation, env);
     if (t->kind == DEF){
         evaluate_term(t->right, env);
         free_term(t->right->annotation);
         t->right->annotation = copy_term(t->left->annotation);
-        add_environment(env, t);
+    }
+    if (t->kind == ELIM){
+        term *arg = t->left;  
+        evaluate_term(arg, env);
+        if (arg->kind == CONS){
+            replace_term(t, t->constructors[arg->n]);
+        }
     }
     if (t->kind == IND){
-        int i;
-        add_environment(env, t);
-        for (i = 0; i < t->n; ++i) {
-            term *cons = t->constructors[i];
-            add_environment(env, cons);
-        }
+        // Um, do nothing
     }
     if (t->kind == CONS){
         // Um, do nothing
@@ -173,7 +286,7 @@ void evaluate_term(term *t, environment *env)
         evaluate_term(t->left, env);
         evaluate_term(t->right, env);
         if (t->left->kind == FUN){
-            
+
             term *lam = t->left;
             term *arg = copy_term(t->right);
 
@@ -187,25 +300,11 @@ void evaluate_term(term *t, environment *env)
     }
 }
 
-int compare_types(term *t1, term *t2)
-{
-    if(DEBUG) printf("Comparing ");
-    if(DEBUG) print_term(t1);
-    if(DEBUG) printf(" and ");
-    if(DEBUG) print_term(t2);
-    if(DEBUG) printf("\n");
-
-    if(!t1 && !t2) return 1;
-    if(!t1 || !t2) return 0;
-    if(t1->kind != t2->kind) return 0;
-    if(t1->kind == VAR) return t1->n == t2->n;
-    if(t1->kind == TYPE && t2->kind == TYPE) return 1;
-    if(t1->kind == IND && t2->kind == IND) return (strcmp(t1->name, t2->name) == 0);
-    return (compare_types(t1->left, t2->left) && compare_types(t1->right, t2->right));
-}
-
 term *type_infer(term *t, environment *env, term_list *context)
 {
+    if(t->kind == ELIM){
+        return copy_term(t->annotation);
+    }
     if(t->kind == IND){
         return copy_term(t->annotation);
     }
@@ -383,6 +482,11 @@ int type_check(term *t, environment *env, term_list *context, term *type)
             term *arg_type = type->left->annotation;
             term *arg = t->left;
             evaluate_term(arg, env);
+            if(DEBUG) print_term(arg);
+            if(DEBUG) printf("\n");
+
+            if(DEBUG) print_term(arg_type);
+            if(DEBUG) printf("\n");
             if(arg->annotation){
                 if(!compare_types(arg->annotation, arg_type)){
                     if(DEBUG) printf("Arguement doesn't match annotation\n");
@@ -507,6 +611,12 @@ void debruijn_r(term *t, index_list *list)
         if(DEBUG) printf("Popping %s from list\n", top->name);
         free(top);
     }else if (t->kind == IND){
+    }else if (t->kind == ELIM){
+        debruijn_r(t->left, list);
+        int i;
+        for(i = 0; i < t->n; ++i){
+            debruijn_r(t->constructors[i], list);
+        }
     }else if (t->kind == TYPE){
     }
 }
@@ -628,7 +738,7 @@ void print_term_r(term *t, term_list *context)
         printf(" -> ");
         term *next = t;
         term_list *top = context;
-        while(next->right->kind == PI){
+        while (next->right->kind == PI){
             context = push_term_list(context, next->left);
             print_term_r(next->right->left, context);
             printf(" -> ");

@@ -18,7 +18,6 @@ def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> eq A a b -> eq B (f a
 def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> eq A a b -> eq B (f a) (f b)) = fun A B f a b e => e (fun x => eq B (f a) (f x)) (refl B (f a))
 def theorem_false = (A:Type -> A)
 ind bool = true | false
-ind nat = O:nat | S:(nat->nat)
-S (S O)
-def add1 = fun n:nat => S n
-add1 (S (S O))
+def not:(bool -> bool) = fun x:(bool) => bool_elim (fun x:bool => bool) false true x
+not true
+not false

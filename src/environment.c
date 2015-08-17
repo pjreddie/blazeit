@@ -81,9 +81,10 @@ void add_environment(environment *m, term* val)
 
 term *get_environment(environment *m, string key)
 {
+    if (!m) return 0;
     unsigned int h = hash_string(key)%m->size;
     term_list *l = find_term_list(m->elements[h], key);
-    if(l) return l->value;
+    if (l) return l->value;
     return 0;
 }
 

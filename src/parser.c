@@ -172,6 +172,7 @@ term *parse_ind(token_list **list)
     do {
         t->constructors = realloc(t->constructors, (count+1)*sizeof(term*));
         term *cons = parse_cons(list);
+        cons->n = count;
         if (!cons->annotation){
             cons->annotation = copy_term(refer);
         }

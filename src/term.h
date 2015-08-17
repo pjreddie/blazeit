@@ -28,6 +28,7 @@ void replace_term(term *old, term *new);
 int type_check(term *t, struct environment *env, term_list *context, term *type);
 term *type_infer(term *t, struct environment *env, term_list *context);
 void evaluate_term(term *t, struct environment *env);
+term *make_eliminator(term *t);
 
 void print_term(term *t);
 void print_term_r(term *t, term_list *context);

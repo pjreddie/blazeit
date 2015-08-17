@@ -11,6 +11,15 @@ void file_error(char *s)
     exit(0);
 }
 
+char *append_string(char *s, char *after)
+{
+    int len = strlen(s) + strlen(after);
+    char *copy = calloc(len+1, sizeof(char));
+    memcpy(copy, s, strlen(s));
+    memcpy(copy+strlen(s), after, strlen(after));
+    return copy;
+}
+
 char *copy_string(char *s)
 {
     int len = strlen(s);

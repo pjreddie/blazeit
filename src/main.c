@@ -7,6 +7,27 @@
 
 #define debug 1
 
+void add_stuff(term *t, environment *env)
+{
+    if(t->kind == IND || t->kind == DEF){
+        add_environment(env, t);
+    }
+    if(t->kind == IND){
+        int i;
+        for (i = 0; i < t->n; ++i) {
+            term *cons = t->constructors[i];
+            add_environment(env, cons);
+        }
+
+        term *elim = make_eliminator(t);
+        elim->annotation = type_infer(elim, 0, 0);
+        printf("Automatically adding %s: ", elim->name);
+        print_term(elim->annotation);
+        printf("\n");
+        add_environment(env, elim);
+    }
+}
+
 void blazeit(FILE *input, environment *env)
 {
     while(1){
@@ -20,20 +41,23 @@ void blazeit(FILE *input, environment *env)
             break;
         }
         term *t = parse_string(line);
-        if(!t) continue;
-        if(debug){
+        if (!t) continue;
+        if (debug){
             printf("Input: ");
             print_term(t);
             printf("\n");
         }
         term *type = type_infer(t, env, 0);
-        if(debug){
+        if (debug){
             printf("Type Check: ");
             print_term(type);
             printf("\n");
         }
-        if(type) evaluate_term(t, env);
-        else fprintf(stderr, "Didn't Type Check!\n");
+
+        if(!type) fprintf(stderr, "Didn't Type Check!\n");
+        evaluate_term(t, env);
+
+        add_stuff(t, env);
 
         if(debug){
             printf("Output: ");
