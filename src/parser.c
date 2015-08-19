@@ -62,17 +62,6 @@ int peek(token_kind kind, token_list **l)
     return (token && token->kind == kind);
 }
 
-term *convert_unnamed(term *t)
-{
-    if(t->annotation) return t;
-    term *type = t;
-    term *var = calloc(1, sizeof(term));
-    var->kind = VAR;
-    var->annotation = type;
-    var->name = copy_string("_");
-    return var;
-}
-
 term *parse_pi(token_list **list, term *t)
 {
     term *pi = calloc(1, sizeof(term));
@@ -164,19 +153,19 @@ term *parse_ind(token_list **list)
     }
     term *refer = copy_term(t);
 
-    t->constructors = calloc(1, sizeof(term*));
+    t->cases = calloc(1, sizeof(term*));
 
     expect(EQUAL_T, list);
     accept(OR_T, list);
     int count = 0;
     do {
-        t->constructors = realloc(t->constructors, (count+1)*sizeof(term*));
+        t->cases = realloc(t->cases, (count+1)*sizeof(term*));
         term *cons = parse_cons(list);
         cons->n = count;
         if (!cons->annotation){
             cons->annotation = copy_term(refer);
         }
-        t->constructors[count] = cons;
+        t->cases[count] = cons;
         ++count;
     } while (accept(OR_T, list));
     t->n = count;

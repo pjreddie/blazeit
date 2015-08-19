@@ -49,11 +49,11 @@ term *copy_term(term *t)
         not_implemented();
     }
     */
-    if(t->constructors){
-        copy->constructors = calloc(t->n, sizeof(term*));
+    if(t->cases){
+        copy->cases = calloc(t->n, sizeof(term*));
         int i;
         for(i = 0; i < t->n; ++i){
-            copy->constructors[i] = copy_term(t->constructors[i]);
+            copy->cases[i] = copy_term(t->cases[i]);
         }
     }
     return copy;
@@ -101,19 +101,33 @@ void substitute(term *t, term *arg, int level)
     else if(t->kind == ELIM){
         int i;
         substitute(t->left, arg, level);
+        substitute(t->right, arg, level);
         for(i = 0; i < t->n; ++i){
-            substitute(t->constructors[i], arg, level);
+            substitute(t->cases[i], arg, level);
         }
     }
 }
 
-void free_term(term *t)
+void free_term_contents(term *t)
 {
     if(!t) return;
     free_term(t->left);
     free_term(t->right);
     free_term(t->annotation);
     if (t->name) free(t->name);
+    if (t->cases){
+        int i;
+        for(i = 0; i < t->n; ++i){
+            free_term(t->cases[i]);
+        }
+        free(t->cases);
+    }
+}
+
+void free_term(term *t)
+{
+    if(!t) return;
+    free_term_contents(t);
     free(t);
 }
 
@@ -186,15 +200,37 @@ term *make_app(term *l, term *r)
     return app;
 }
 
-term *make_eliminator(term *t)
+term *construct_instance(term *cons)
+{
+    term *annot = cons->annotation;
+    term *construct = copy_term(cons);
+    while (annot->kind == PI){
+        construct = make_app(construct, copy_term(annot->left));
+        if(construct->right->name) free(construct->right->name);
+        construct->right->name = 0;
+        annot = annot->right;
+    }
+    return construct;
+}
+
+term *convert_unnamed(term *t)
+{
+    if(t->annotation) return t;
+    term *type = t;
+    term *var = calloc(1, sizeof(term));
+    var->kind = VAR;
+    var->annotation = type;
+    var->name = copy_string("_");
+    return var;
+}
+
+term *make_eliminator(term *t, term **constructors, int n)
 {
     int i;
 
-    term *P = make_variable(copy_string("P"));
-    term *ind_type = make_variable(copy_string(t->name));
-
+    term *P = make_variable(append_string(t->name, "_motive"));
     P->annotation = make_pi(make_variable(copy_string("_")), make_type());
-    P->annotation->left->annotation = ind_type;
+    P->annotation->left->annotation = copy_term(t);
 
     term *fun = calloc(1, sizeof(term));
     term *top = fun;
@@ -202,25 +238,60 @@ term *make_eliminator(term *t)
     fun->kind = FUN;
     fun->left = P;
 
-    term *ret = make_variable(copy_string("ret"));
+    term *ret = make_variable(append_string(t->name, "_return"));
     ret->kind = ELIM;
     ret->n = t->n;
-    ret->constructors = calloc(ret->n, sizeof(term*));
+    ret->cases = calloc(ret->n, sizeof(term*));
 
-    for (i = 0; i < t->n; ++i) {
-        term *cons = t->constructors[i];
+    for (i = 0; i < n; ++i) {
+        term *cons = constructors[i];
+        term *construction = construct_instance(cons);
+        free_term(construction);
+        //term *annot = copy_term(cons->annotation);
 
-        if(compare_types(cons->annotation, t)){
-        }
-        
         fun->right = calloc(1, sizeof(term));
         fun = fun->right;
         fun->kind = FUN;
-
         term *part = make_variable(append_string(cons->name, "_case"));
-        part->annotation = make_app(copy_term(P), copy_term(cons));
-        ret->constructors[i] = copy_term(part);
-        
+
+        if(cons->annotation->kind == IND){
+            term *motive = make_variable(0);
+            motive->n = i;
+            part->annotation = make_app(motive, copy_term(cons));
+        } else {
+            char buff[256];
+            int level = 0;
+            term *construction = construct_instance(cons);
+            term *annot = copy_term(cons->annotation);
+            part->annotation = annot;
+            while(annot->kind == PI){
+                if(compare_types(annot->left->annotation, t)){
+                    term *prev = make_variable(0);
+                    term *motive = make_variable(0);
+                    motive->n = level+i+1;
+                    term *add_type = make_app(motive, prev);
+                    term *var = convert_unnamed(add_type);
+                    term *swap = annot->right;
+                    increment(swap, 1, 0);
+                    increment(construction, 1, 0);
+                    annot->right = make_pi(var, swap);
+                }
+                snprintf(buff, 256, "%d", level);
+                if(annot->left->name) free(annot->left->name);
+                annot->left->name = append_string("_", buff);
+                annot = annot->right;
+                ++level;
+            }
+
+            term *motive = make_variable(0);
+            motive->n = level+i;
+            term *last = make_app(motive, construction);
+            free_term_contents(annot);
+            *annot = *last;
+            free(last);
+        }
+        ret->cases[i] = make_variable(0);
+        ret->cases[i]->n = n-i;
         fun->left = part;
     }
     fun->right = calloc(1, sizeof(term));
@@ -228,15 +299,16 @@ term *make_eliminator(term *t)
     fun->kind = FUN;
 
     term *arg = make_variable(copy_string("arg"));
-    arg->annotation = copy_term(ind_type);
+    arg->annotation = copy_term(t);
 
-    ret->annotation = make_app(copy_term(P), copy_term(arg));
-    ret->left = copy_term(arg);
-    
+    term *motive = make_variable(0);
+    motive->n = n+1;
+    ret->annotation = make_app(motive, make_variable(0));
+    ret->left  = copy_term(motive);
+    ret->right = copy_term(arg);
+
     fun->left = arg;
     fun->right = ret;
-
-    debruijn(top);
 
     return top;
 }
@@ -250,18 +322,50 @@ void evaluate_term(term *t, environment *env)
         free_term(t->right->annotation);
         t->right->annotation = copy_term(t->left->annotation);
     }
-    if (t->kind == ELIM){
-        term *arg = t->left;  
+    if (t->kind == ELIM) {
+        term *arg = t->right;  
+        term *base_type = type_infer(arg, env, 0);
         evaluate_term(arg, env);
-        if (arg->kind == CONS){
-            replace_term(t, t->constructors[arg->n]);
+        if (arg->kind == CONS) {
+            term *c = t->cases[arg->n];
+            replace_term(t, c);
+            evaluate_term(t, env);
+        } else if (arg->kind == APP){
+            // (branch t t) -> ((branch t) t)
+            // (S O)
+            // ((ps k) elim)
+            // ((ps t1) t2)
+            // (((ps t1) t2) elim_t2)
+            // ((((ps t1) elim_t1) t2) elimt2)
+            term *replace = copy_term(arg);
+            term *top = replace;
+            while (replace->kind == APP){
+                term *next = replace->right;
+                if(type_check(next, env, 0, base_type)){
+                    term *elim = copy_term(t);
+                    free_term(elim->right);
+                    elim->right = copy_term(next);
+                    term *rec = make_app(replace, elim);
+                    replace_term(replace, rec);
+                    replace = replace->left;
+                }
+                if(replace->left->kind != APP){
+                    int n = replace->left->n;
+                    free_term(replace->left);
+                    replace->left = copy_term(t->cases[n]);
+                }
+                replace = replace->left;
+            }
+
+            replace_term(t, top);
+            evaluate_term(t, env);
         }
+        return;
     }
     if (t->kind == IND){
         // Um, do nothing
     }
     if (t->kind == CONS){
-        // Um, do nothing
     }
     if (t->kind == VAR){
         term *lookup = 0;
@@ -309,7 +413,6 @@ term *type_infer(term *t, environment *env, term_list *context)
         return copy_term(t->annotation);
     }
     if(t->kind == CONS){
-        print_term(t);
         return copy_term(t->annotation);
     }
     if(t->kind == VAR){
@@ -330,7 +433,7 @@ term *type_infer(term *t, environment *env, term_list *context)
 
         return m;
     }
-    if(t->kind == FUN){
+    if (t->kind == FUN) {
         term *arg = t->left;
         term *body = t->right;
         evaluate_term(arg, env);
@@ -344,10 +447,7 @@ term *type_infer(term *t, environment *env, term_list *context)
             if(DEBUG) printf("\n");
             return 0;
         }
-        term *pi = calloc(1, sizeof(term));
-        pi->kind = PI;
-        pi->left = copy_term(arg);
-        pi->right = infer;
+        term *pi = make_pi(copy_term(arg), infer);
 
         if(DEBUG) printf("Inferred ");
         if(DEBUG) print_term(t);
@@ -615,7 +715,7 @@ void debruijn_r(term *t, index_list *list)
         debruijn_r(t->left, list);
         int i;
         for(i = 0; i < t->n; ++i){
-            debruijn_r(t->constructors[i], list);
+            debruijn_r(t->cases[i], list);
         }
     }else if (t->kind == TYPE){
     }
@@ -655,18 +755,7 @@ void print_term_fun(term *t, term_list *context)
 
 void print_ind(term *t, term_list *context)
 {
-    if(t->n){
-        printf("ind ");
-        printf("%s", t->name);
-        printf(" = ");
-        int i;
-        for(i = 0; i < t->n; ++i){
-            if(i != 0) printf(" | ");
-            print_term_r(t->constructors[i], context);
-        }
-    }else{
-        printf("%s", t->name);
-    }
+    printf("%s", t->name);
 }
 
 void print_term_r(term *t, term_list *context)
@@ -677,10 +766,12 @@ void print_term_r(term *t, term_list *context)
     }
     term_list *front = context;
     if (t->kind == VAR){
-        if(t->name && strcmp(t->name, "_")==0){
-            print_term_r(t->annotation, front);
-            return;
-        }
+        /*
+           if(t->name && strcmp(t->name, "_")==0){
+           print_term_r(t->annotation, front);
+           return;
+           }
+         */
         if(t->name){
             printf("%s", t->name);
         }else{
@@ -693,10 +784,22 @@ void print_term_r(term *t, term_list *context)
             }
             else printf("%s", lookup->name);
         }
+        //printf("#%d", t->n);
         if(t->annotation){
             printf(":");
             print_term_r(t->annotation, front);
         }
+    }else if (t->kind == ELIM){
+        printf("(%s ", t->name);
+        int i;
+        print_term_r(t->left, context);
+        printf(" ");
+        for(i = 0; i < t->n; ++i){
+            print_term_r(t->cases[i], context);
+            printf(" ");
+        }
+        print_term_r(t->right, context);
+        printf(")");
     }else if (t->kind == DEF){
         printf("def ");
         print_term_r(t->left, context);

@@ -9,17 +9,23 @@
 
 void add_stuff(term *t, environment *env)
 {
-    if(t->kind == IND || t->kind == DEF){
+    if(t->kind == DEF){
         add_environment(env, t);
     }
     if(t->kind == IND){
+        term **constructors = t->cases;
+        t->cases = 0;
+        int n = t->n;
+
+        add_environment(env, t);
         int i;
-        for (i = 0; i < t->n; ++i) {
-            term *cons = t->constructors[i];
+        for (i = 0; i < n; ++i) {
+            term *cons = constructors[i];
+            evaluate_term(cons, env);
             add_environment(env, cons);
         }
 
-        term *elim = make_eliminator(t);
+        term *elim = make_eliminator(t, constructors, n);
         elim->annotation = type_infer(elim, 0, 0);
         printf("Automatically adding %s: ", elim->name);
         print_term(elim->annotation);
