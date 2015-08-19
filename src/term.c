@@ -34,6 +34,29 @@ int compare_types(term *t1, term *t2)
     return (compare_types(t1->left, t2->left) && compare_types(t1->right, t2->right));
 }
 
+void free_term_contents(term *t)
+{
+    if(!t) return;
+    free_term(t->left);
+    free_term(t->right);
+    free_term(t->annotation);
+    if (t->name) free(t->name);
+    if (t->cases){
+        int i;
+        for(i = 0; i < t->n; ++i){
+            free_term(t->cases[i]);
+        }
+        free(t->cases);
+    }
+}
+
+void free_term(term *t)
+{
+    if(!t) return;
+    free_term_contents(t);
+    free(t);
+}
+
 term *copy_term(term *t)
 {
     if(!t) return 0;
@@ -83,7 +106,7 @@ void substitute(term *t, term *arg, int level)
         if(t->n == level){
             term *copy = copy_term(arg);       
             increment(copy, level, 0);
-            if (t->name) free(t->name);
+            free_term_contents(t);
             *t = *copy;
             free(copy);
         }else if(t->n > level){
@@ -108,35 +131,10 @@ void substitute(term *t, term *arg, int level)
     }
 }
 
-void free_term_contents(term *t)
-{
-    if(!t) return;
-    free_term(t->left);
-    free_term(t->right);
-    free_term(t->annotation);
-    if (t->name) free(t->name);
-    if (t->cases){
-        int i;
-        for(i = 0; i < t->n; ++i){
-            free_term(t->cases[i]);
-        }
-        free(t->cases);
-    }
-}
-
-void free_term(term *t)
-{
-    if(!t) return;
-    free_term_contents(t);
-    free(t);
-}
-
 void replace_term(term *old, term *new)
 {
     term *copy = copy_term(new);
-    free_term(old->left);
-    free_term(old->right);
-    if (old->name) free(old->name);
+    free_term_contents(old);
     *old = *copy;
     free(copy);
 }
@@ -324,13 +322,13 @@ void evaluate_term(term *t, environment *env)
     }
     if (t->kind == ELIM) {
         term *arg = t->right;  
-        term *base_type = type_infer(arg, env, 0);
         evaluate_term(arg, env);
         if (arg->kind == CONS) {
             term *c = t->cases[arg->n];
             replace_term(t, c);
             evaluate_term(t, env);
         } else if (arg->kind == APP){
+            term *base_type = type_infer(arg, env, 0);
             // (branch t t) -> ((branch t) t)
             // (S O)
             // ((ps k) elim)
@@ -347,6 +345,8 @@ void evaluate_term(term *t, environment *env)
                     elim->right = copy_term(next);
                     term *rec = make_app(replace, elim);
                     replace_term(replace, rec);
+                    free_term(elim);
+                    free(rec);
                     replace = replace->left;
                 }
                 if(replace->left->kind != APP){
@@ -358,6 +358,8 @@ void evaluate_term(term *t, environment *env)
             }
 
             replace_term(t, top);
+            free_term(top);
+            free_term(base_type);
             evaluate_term(t, env);
         }
         return;

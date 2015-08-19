@@ -31,6 +31,11 @@ void add_stuff(term *t, environment *env)
         print_term(elim->annotation);
         printf("\n");
         add_environment(env, elim);
+        for (i = 0; i < n; ++i) {
+            free_term(constructors[i]);
+        }
+        free(constructors);
+        free_term(elim);
     }
 }
 
