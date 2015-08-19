@@ -23,13 +23,16 @@ def not:(bool -> bool) = fun x:bool => bool_elim (fun y:bool => bool) false true
 not true
 not false
 def add:(nat -> nat -> nat) = fun n m => nat_elim (fun x => nat) m (fun x ex => S ex) n
+def mul:(nat -> nat -> nat) = fun n m => nat_elim (fun x => nat) 0 (fun x ex => add m ex) n
 def 1 = S 0
 def 2 = S 1
 def 3 = S 2
 def 4 = S 3
 def 5 = S 4
-add 0 3
-add 3 0
-ind tree = leaf | branch:(tree->nat->tree->tree)
 def 10 = add 5 5
+def 420 = add (mul 4 (mul 10 10)) (mul 10 2)
 add 10 10 
+def even = fun n:nat => nat_elim (fun x => bool) true (fun x r => not r) n
+even 10
+even 2
+even 420
