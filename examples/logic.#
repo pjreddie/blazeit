@@ -13,7 +13,7 @@ def eq:(A:Type -> A -> A -> Type) = fun A a b => P:(A -> Type) -> (P a) -> (P b)
 def refl : (A:Type -> a:A -> eq A a a) = fun A a P Pa => Pa
 def subst : (A:Type -> P:(A -> Type) -> a:A -> b:A -> eq A a b -> P a -> P b) = fun A P a b e Pa => e P Pa
 def comp:(A:Type -> B:Type -> C:Type -> (A->B) -> (B->C) -> (A->C)) = fun A B C f g x => g (f x)
-def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> eq A a b -> eq B (f a) (f b)) = fun A B f a b e P Pfa => e (comp A B Type f P) Pfa
+def sym: (A:Type -> a:A -> b:A -> eq A a b -> eq A b a) = fun A a b e => e (fun x => eq A x a) (refl A a)
 def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> eq A a b -> eq B (f a) (f b)) = fun A B f a b e P Pfa => e (comp A B Type f P) Pfa
 def fequal: (A:Type -> B:Type -> f:(A->B) -> a:A -> b:A -> eq A a b -> eq B (f a) (f b)) = fun A B f a b e => e (fun x => eq B (f a) (f x)) (refl B (f a))
 def theorem_false = (A:Type -> A)
@@ -31,10 +31,8 @@ def 4 = S 3
 def 5 = S 4
 def 10 = add 5 5
 def 420 = add (mul 4 (mul 10 10)) (mul 10 2)
-add 10 10 
+add 10 10
 def even = fun n:nat => nat_elim (fun x => bool) true (fun x r => not r) n
 even 10
 even 2
 even 420
-def eq:(A:Type -> A -> A -> Type) = fun A a b => P:(A -> Type) -> (P a) -> (P b)
-def eq_sym: (A:Type -> a:A -> b:A -> eq A a b -> eq A b a) = fun A a b e P Pb => .
