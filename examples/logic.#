@@ -36,3 +36,5 @@ def even = fun n:nat => nat_elim (fun x => bool) true (fun x r => not r) n
 even 10
 even 2
 even 420
+def eq:(A:Type -> A -> A -> Type) = fun A a b => P:(A -> Type) -> (P a) -> (P b)
+def eq_sym: (A:Type -> a:A -> b:A -> eq A a b -> eq A b a) = fun A a b e P Pb => .
