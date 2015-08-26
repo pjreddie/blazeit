@@ -24,12 +24,22 @@
 ;; A major mode for the BlazeIt proof assistant.
 ;; Provides syntax highlighting and entities.
 
+(defgroup blazeit nil
+  "The BlazeIt theorem prover"
+  :prefix "blazeit-"
+  :group 'languages)
+
+(defcustom blazeit-program "/usr/bin/blazeit"
+  "The path to the blazeit executable"
+  :group 'blazeit
+  :type 'string)
+
 (defvar blazeit-mode-hook
   '(prettify-symbols-mode variable-pitch-mode))
 
 (defvar blazeit-mode-map
-  (let ((map (make-keymap)))
-    ;;(define-key map "\C-j" 'newline-and-typecheck)
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c C-c") 'blazeit-run-term)
     map)
   "Keymap for BlazeIt major mode")
 
@@ -41,7 +51,7 @@
     ("\\<\\(\\w+\\)\\>" . font-lock-variable-name-face)))
 
 (defconst blazeit-pretty-symbols
-  '(("->" . ?→) ("=>" . ?⇒) ("fun" . "ƒ")))
+  '(("->" . ?→) ("=>" . ?⇒) ("fun" . ?ƒ) ("Type" . ?★)))
 
 (defvar blazeit-mode-syntax-table
   (let ((st (make-syntax-table)))
@@ -52,8 +62,55 @@
 (define-derived-mode blazeit-mode prog-mode "#"
   "Major mode for editing BlazeIt proof files"
   :syntax-table blazeit-mode-syntax-table
+  :group 'blazeit
   (set (make-local-variable 'prettify-symbols-alist) blazeit-pretty-symbols)
   (set (make-local-variable 'font-lock-defaults) '(blazeit-font-lock-keywords))
+  (use-local-map blazeit-mode-map)
   (font-lock-fontify-buffer))
+
+(defvar blazeit-buffer-process nil)
+(defvar blazeit-process-buffer nil)
+
+(defun blazeit-start-process (buffer)
+  (if (and (equal buffer blazeit-process-buffer)
+           (eq (process-status blazeit-buffer-process) 'run))
+      blazeit-buffer-process
+    (let* ((pbuffer (get-buffer-create "*blazeit*"))
+           (process (start-file-process "blazeit" pbuffer blazeit-program)))
+      (setf blazeit-buffer-process process
+            blazeit-process-buffer buffer)
+      process)))
+
+(defun blazeit-parse-output (output)
+  (cl-loop for line in (split-string output "\n" t)
+           collect
+           (cond
+            ((string-match "^Input: \\(.*\\)$" line) (list 'input (match-string 1 line)))
+            ((string-match "^Left: \\(.*\\)$" line) (list 'left (match-string 1 line)))
+            ((string-match "^Right: \\(.*\\)$" line) (list 'right (match-string 1 line)))
+            ((string-match "^Type Check: Null Term$" line) (list 'type-check nil))
+            ((string-match "^Type Check: \\(.*\\)$" line) (list 'type-check (match-string 1 line)))
+            ((string-match "^Didn't Type Check!$" line) nil)
+            ((string-match "^Output: \\(.*\\)$" line) (list 'output (match-string 1 line)))
+            ((string-match "^~$" line) nil))))
+
+(defun blazeit-prettify-string (str)
+  (dolist (pair blazeit-pretty-symbols str)
+    (setf str (replace-regexp-in-string (regexp-opt (list (car pair))) (char-to-string (cdr pair)) str))))
+
+(defun blazeit-run-term ()
+  (interactive)
+  (let ((line (current-line)) (process (blazeit-start-process (current-buffer))))
+    (set-process-filter process
+                        (lambda (process output)
+                          (let* ((pout (blazeit-parse-output output))
+                                 (successp (cadr (assoc 'type-check pout)))
+                                 (output (cadr (assoc 'output pout))))
+                            (message "%s %s"
+                                     (propertize (if successp "✔" "❌") 'face
+                                                 (list :foreground (if successp "green" "red")))
+                                     (blazeit-prettify-string (or output "*error*"))))))
+    (process-send-string process (concat line "\n"))
+    (accept-process-output process 0.01)))
 
 (provide 'blazeit-mode)
