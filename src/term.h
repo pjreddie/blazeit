@@ -33,4 +33,8 @@ term *convert_unnamed(term *t);
 
 void print_term(term *t);
 void print_term_r(term *t, term_list *context);
+void print_term_lisp(term *t);
+void print_term_lisp_r(term *t, term_list *context);
+extern void (*real_print_term)(term*);
+extern void (*real_print_term_r)(term*, term_list*);
 #endif
