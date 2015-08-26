@@ -51,7 +51,7 @@
     ("\\<\\(\\w+\\)\\>" . font-lock-variable-name-face)))
 
 (defconst blazeit-pretty-symbols
-  '(("->" . ?→) ("=>" . ?⇒) ("fun" . ?ƒ) ("Type" . ?★)))
+  '(("->" . ?→) ("=>" . ?⇒) ("fun" . ?ƒ) ("Type" . ?★) ("." . ?○)))
 
 (defvar blazeit-mode-syntax-table
   (let ((st (make-syntax-table)))
@@ -85,14 +85,17 @@
   (cl-loop for line in (split-string output "\n" t)
            collect
            (cond
-            ((string-match "^Input: \\(.*\\)$" line) (list 'input (match-string 1 line)))
-            ((string-match "^Left: \\(.*\\)$" line) (list 'left (match-string 1 line)))
-            ((string-match "^Right: \\(.*\\)$" line) (list 'right (match-string 1 line)))
-            ((string-match "^Type Check: Null Term$" line) (list 'type-check nil))
-            ((string-match "^Type Check: \\(.*\\)$" line) (list 'type-check (match-string 1 line)))
+            ((string-match "^Input: \\(.*\\)$" line) (cons 'input (match-string 1 line)))
+            ((string-match "^Left: \\(.*\\)$" line) (cons 'left (match-string 1 line)))
+            ((string-match "^Right: \\(.*\\)$" line) (cons 'right (match-string 1 line)))
+            ((string-match "^Type Check: Null Term$" line) (cons 'type-check nil))
+            ((string-match "^Type Check: \\(.*\\)$" line) (cons 'type-check (match-string 1 line)))
             ((string-match "^Didn't Type Check!$" line) nil)
-            ((string-match "^Output: \\(.*\\)$" line) (list 'output (match-string 1 line)))
-            ((string-match "^~$" line) nil))))
+            ((string-match "^Output: \\(.*\\)$" line) (cons 'output (match-string 1 line)))
+            ((string-match "^Hole should have type: \\(.*\\)$" line)
+             (cons 'hole (match-string 1 line)))
+            ((string-match "^~$" line) nil)
+            (t (message "Unknown line: %s" line) nil))))
 
 (defun blazeit-prettify-string (str)
   (dolist (pair blazeit-pretty-symbols str)
@@ -104,12 +107,15 @@
     (set-process-filter process
                         (lambda (process output)
                           (let* ((pout (blazeit-parse-output output))
-                                 (successp (cadr (assoc 'type-check pout)))
-                                 (output (cadr (assoc 'output pout))))
-                            (message "%s %s"
-                                     (propertize (if successp "✔" "❌") 'face
-                                                 (list :foreground (if successp "green" "red")))
-                                     (blazeit-prettify-string (or output "*error*"))))))
+                                 (successp (cdr (assoc 'type-check pout)))
+                                 (holes (mapcar #'cdr (remove-if-not (lambda (x) (eq (car x) 'hole)) pout)))
+                                 (output (cdr (assoc 'output pout))))
+                            (if holes
+                                (message "%s" (s-join "\n" (mapcar (lambda (x) (format "%s %s" (propertize "?" 'face '(:foreground "yellow")) (blazeit-prettify-string x))) (delete-dups holes))))
+                                (message "%s %s"
+                                         (propertize (if successp "✔" "✘") 'face
+                                                     (list :foreground (if successp "green" "red")))
+                                         (blazeit-prettify-string (or output "*error*")))))))
     (process-send-string process (concat line "\n"))
     (accept-process-output process 0.01)))
 
