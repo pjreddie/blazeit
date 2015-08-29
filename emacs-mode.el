@@ -71,6 +71,15 @@
 (defvar blazeit-buffer-process nil)
 (defvar blazeit-process-buffer nil)
 
+(defun blazeit-process-alivep (buffer)
+  (and (equal buffer blazeit-process-buffer)
+       (eq (process-status blazeit-buffer-process) 'run)))
+
+(defun blazeit-process-kill ()
+  (interactive)
+  (kill-process blazeit-buffer-process)
+  (remove-overlays))
+
 (defun blazeit-start-process (buffer)
   (if (and (equal buffer blazeit-process-buffer)
            (eq (process-status blazeit-buffer-process) 'run))
@@ -140,25 +149,67 @@
     (accept-process-output process 0.01)
     out))
 
+(defun blazeit-present-output (out)
+  (let* ((holes (mapcar #'cdr (remove-if-not (lambda (x) (eq (car x) 'hole)) pout)))
+         (output (cdr (assoc 'output pout)))
+         (out-text (blazeit-prettify-string (blazeit-unparse (or output 'error))))
+         badge)
+
+    (let* ((type (cond
+                 (holes 'hole)
+                 ((not (cdr (assoc 'type-check pout))) 'error)
+                 ((memq (car output) '(DEF IND)) 'def)
+                 (t 'eval)))
+           (char (pcase type (`hole "?") (`error "✘") (`def "✔") (`eval "↪")))
+           (face (pcase type (`hole 'compilation-info) (`error 'compilation-error)
+                        (`def 'success) (`eval 'compilation-info))))
+      (setf badge (propertize char 'face face)))
+
+    (if holes
+        (message "%s"
+                 (s-join "\n"
+                         (mapcar (lambda (x)
+                                   (format "%s %s" badge (blazeit-prettify-string (blazeit-unparse x))))
+                                 (delete-dups holes))))
+      (message "%s %s" badge out-text))
+
+    (let* ((rhs-overlay (blazeit-rhs-overlay badge))
+           (line-overlay
+            (or
+             (car (overlays-at (point)))
+             (make-overlay (point-min) (point-max) (current-buffer) nil t))))
+      (when (overlay-get line-overlay 'rhs-overlay)
+        (delete-overlay (overlay-get line-overlay 'rhs-overlay)))
+      (overlay-put line-overlay 'rhs-overlay rhs-overlay))))
+
+(defun blazeit-update-holes (holes)
+  (dolist (hole holes)
+    (search-forward ".")
+    (replace-match (propertize "." 'help-echo (blazeit-prettify-string (blazeit-unparse hole))
+                               'face 'inactive-hole-face 'mouse-face 'active-hole-face))))
+
+(defun blazeit-rhs-overlay (text)
+  (let ((overlay (make-overlay (point-min) (point-min) nil t t)))
+    (overlay-put overlay 'intangible t)
+    ;(overlay-put overlay 'cursor 1)
+    (overlay-put overlay 'after-string
+                 (propertize " " 'display `((margin left-margin) ,text)))
+    overlay))
+
 (defun blazeit-run-term ()
   (interactive)
-  (let* ((line (current-line))
-         (pout (blazeit-send-term line))
-         (successp (cdr (assoc 'type-check pout)))
-         (holes (mapcar #'cdr (remove-if-not (lambda (x) (eq (car x) 'hole)) pout)))
-         (output (cdr (assoc 'output pout))))
-    (if holes
-        (message "%s" (s-join "\n" (mapcar (lambda (x) (format "%s %s" (propertize "?" 'face '(:foreground "yellow")) (blazeit-prettify-string (blazeit-unparse x)))) (delete-dups holes))))
-      (message "%s %s"
-               (propertize (if successp "✔" "✘") 'face
-                           `(:foreground ,(if successp "green" "red")))
-               (blazeit-prettify-string (blazeit-unparse (or output 'error)))))
-    (save-excursion
-      (save-restriction
-        (narrow-to-region (line-beginning-position) (line-end-position))
-        (beginning-of-line)
-        (dolist (hole holes)
-          (search-forward ".")
-          (replace-match (propertize "." 'help-echo (blazeit-prettify-string (blazeit-unparse hole)))))))))
+  (unless (blazeit-process-alivep (current-buffer))
+    (remove-overlays))
+  (save-excursion
+    (save-restriction
+      (narrow-to-region
+       (if (use-region-p) (region-beginning) (line-beginning-position))
+       (if (use-region-p) (region-end) (line-end-position)))
+      (beginning-of-buffer)
+      (let* ((line (buffer-string))
+             (pout (blazeit-send-term line))
+             (holes (mapcar #'cdr (remove-if-not (lambda (x) (eq (car x) 'hole)) pout))))
+        (blazeit-present-output pout)
+        (blazeit-update-holes holes)))))
 
 (provide 'blazeit-mode)
