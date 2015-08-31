@@ -200,8 +200,6 @@
 
 (defun blazeit-rhs-overlay (text)
   (let ((overlay (make-overlay (point-min) (point-min) nil t t)))
-    (overlay-put overlay 'intangible t)
-    ;(overlay-put overlay 'cursor 1)
     (overlay-put overlay 'after-string
                  (propertize " " 'display `((margin left-margin) ,text)))
     overlay))
