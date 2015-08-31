@@ -128,7 +128,7 @@
     ; (format "ind %s:(%s) = %s" name (blazeit-unparse type) (s-join " | " (mapcar (lambda (x) (blazeit-unparse x (cons name ctx))) cases))))
     (`(PI nil 0 (VAR _ 0 nil nil ,atype) ,body ,_a) (format "(%s -> %s)" (blazeit-unparse atype ctx) (blazeit-unparse body (cons '_ ctx))))
     (`(PI nil 0 (VAR ,arg 0 nil nil ,atype) ,body ,_a) (format "(%s:%s -> %s)" arg (blazeit-unparse atype ctx) (blazeit-unparse body (cons arg ctx))))
-    (`(TYPE nil 0 nil nil ,_a) "Type")
+    (`(TYPE nil ,_l nil nil ,_a) "Type")
     (`(CONS ,name ,n nil nil ,_type) (format "%s" name))
     (`(DEF ,name 0 (VAR ,name 0 nil nil nil) ,body ,_a) (format "def %s = %s" name (blazeit-unparse body ctx)))
     (`(DEF ,name 0 (VAR ,name 0 nil nil ,type) ,body ,_a) (format "def %s:%s = %s" name (blazeit-unparse type ctx) (blazeit-unparse body ctx)))
