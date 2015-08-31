@@ -70,6 +70,7 @@
 
 (defvar blazeit-buffer-process nil)
 (defvar blazeit-process-buffer nil)
+(defvar blazeit-defined-names nil)
 
 (defun blazeit-process-alivep (buffer)
   (and (equal buffer blazeit-process-buffer)
@@ -78,6 +79,7 @@
 (defun blazeit-process-kill ()
   (interactive)
   (kill-process blazeit-buffer-process)
+  (setf blazeit-defined-names nil)
   (remove-overlays))
 
 (defun blazeit-start-process (buffer)
@@ -164,6 +166,14 @@
            (face (pcase type (`hole 'compilation-info) (`error 'compilation-error)
                         (`def 'success) (`eval 'compilation-info))))
       (setf badge (propertize char 'face face)))
+
+    (pcase output
+      (`(DEF ,name 0 (VAR ,name 0 nil nil ,type) ,_body ,_a)
+       (add-to-list 'blazeit-defined-names (cons name type)
+                    nil (lambda (x y) (eq (car x) (car y)))))
+      (`(IND ,name ,_n ,_l ,_r ,type)
+       (add-to-list 'blazeit-defined-names (cons name type)
+                    nil (lambda (x y) (eq (car x) (car y))))))
 
     (if holes
         (message "%s"
