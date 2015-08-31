@@ -222,4 +222,19 @@
         (blazeit-present-output pout)
         (blazeit-update-holes holes)))))
 
+(defun blazeit-company-backend (command &optional arg &rest ignore)
+  (interactive (list 'interactive))
+  (pcase command
+    (`interactive
+     (company-begin-backend 'blazeit-company-backend))
+    (`prefix
+     (and (eq major-mode 'blazeit-mode) (boundp 'blazeit-defined-names)
+          (company-grab-symbol)))
+    (`candidates
+     (-select (lambda (x) (string-prefix-p arg x))
+              (-map 'symbol-name (-map 'car blazeit-defined-names))))))
+
+(eval-after-load 'company
+  (add-to-list 'company-backends 'blazeit-company-backend))
+
 (provide 'blazeit-mode)
