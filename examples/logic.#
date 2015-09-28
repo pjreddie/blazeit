@@ -36,3 +36,7 @@ def even = fun n:nat => nat_elim (fun x => bool) true (fun x r => not r) n
 even 10
 even 2
 even 420
+ind bool = btrue | bfalse
+def band:(bool -> bool -> bool) = fun a b => bool_elim (fun x => bool) b a a
+def asdf = fun a:bool b:bool => eq bool (band a b) (band a b)
+ind list:(A:Type -> Type) = nil : (A:Type -> list A) | cons : (A:Type -> A -> list A -> list A)

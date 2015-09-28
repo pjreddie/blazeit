@@ -713,6 +713,10 @@ void debruijn_r(term *t, index_list *list)
         if(DEBUG) printf("Popping %s from list\n", top->name);
         free(top);
     }else if (t->kind == IND){
+        int i;
+        for(i = 0; i < t->n; ++i){
+            debruijn_r(t->cases[i], list);
+        }
     }else if (t->kind == ELIM){
         debruijn_r(t->left, list);
         int i;
