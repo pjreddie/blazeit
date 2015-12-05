@@ -55,13 +55,13 @@ void blazeit(FILE *input, environment *env)
         if (!t) continue;
         if (debug){
             printf("Input: ");
-            print_term(t);
+            real_print_term(t);
             printf("\n");
         }
         term *type = type_infer(t, env, 0);
         if (debug){
             printf("Type Check: ");
-            print_term(type);
+            real_print_term(type);
             printf("\n");
         }
 
@@ -72,7 +72,7 @@ void blazeit(FILE *input, environment *env)
 
         if(debug){
             printf("Output: ");
-            print_term(t);
+            real_print_term(t);
             printf("\n");
         }
         free_term(type);
@@ -85,7 +85,14 @@ int main(int argc, char **argv)
 {
     int i;
     environment *env = make_environment();
+    real_print_term = print_term;
+    real_print_term_r = print_term_r;
     for(i = 1; i < argc; ++i){
+        if(!strncmp(argv[i], "--lisp", sizeof("--lisp"))){
+            real_print_term = print_term_lisp;
+            real_print_term_r = print_term_lisp_r;
+            continue;
+        }
         FILE *fp = fopen(argv[i], "r");
         if(!fp) file_error(argv[i]);
         blazeit(fp, env);

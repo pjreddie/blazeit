@@ -539,10 +539,10 @@ term *type_infer(term *t, environment *env, term_list *context)
                 term *lt = type_infer(t->left, env, context);
                 term *rt = type_infer(t->right, env, context);
                 printf("Left: ");
-                print_term(lt);
+                real_print_term(lt);
                 printf("\n");
                 printf("Right: ");
-                print_term(rt);
+                real_print_term(rt);
                 printf("\n");
                 free_term(lt);
                 free_term(rt);
@@ -574,7 +574,7 @@ int type_check(term *t, environment *env, term_list *context, term *type)
     }
     if(t->kind == HOLE){
         printf("Hole should have type: ");
-        print_term_r(type, context);
+        real_print_term_r(type, context);
         printf("\n");
         return 1;
     }
@@ -616,11 +616,11 @@ int type_check(term *t, environment *env, term_list *context, term *type)
         evaluate_term(infer, env);
         int compare = compare_types(infer, type);
         if(!compare){
-            printf("APPs don't match: ");
-            printf("\n");
-            print_term(infer);
-            printf("\n");
-            print_term(type);
+            printf("APPs don't match!\n");
+            printf("APP Left: ");
+            real_print_term(infer);
+            printf("\nAPP Right: ");
+            real_print_term(type);
             printf("\n");
         }
         free_term(infer);
@@ -731,6 +731,9 @@ void debruijn(term *t)
 {
     debruijn_r(t, 0);
 }
+
+void (*real_print_term)(term*);
+void (*real_print_term_r)(term*, term_list*);
 
 void print_term_fun(term *t, term_list *context)
 {
@@ -869,3 +872,74 @@ void print_term(term *t)
     print_term_r(t, 0);
 }
 
+void print_term_lisp(term *t)
+{
+		int i;
+		if(!t){
+				printf("nil");
+				return;
+		}
+
+    if (t->kind == VAR){
+				printf("(VAR ");
+    }else if (t->kind == APP){
+				printf("(APP ");
+    }else if (t->kind == FUN){
+				printf("(FUN ");
+    }else if (t->kind == IND){
+				printf("(IND ");
+    }else if (t->kind == PI){
+				printf("(PI ");
+    }else if (t->kind == TYPE){
+				printf("(TYPE ");
+    }else if (t->kind == CONS){
+				printf("(CONS ");
+    }else if (t->kind == DEF){
+				printf("(DEF ");
+    }else if (t->kind == HOLE){
+				printf("(HOLE ");
+    }else if (t->kind == ELIM){
+				printf("(ELIM ");
+    }else{
+				printf("(%d ", t->kind);
+		}
+
+		if(t->name){
+				printf("%s ", t->name);
+		}else{
+				printf("nil ");
+		}
+
+		printf("%d ", t->n);
+
+		print_term_lisp(t->left);
+		printf(" ");
+		print_term_lisp(t->right);
+		printf(" ");
+		print_term_lisp(t->annotation);
+		if(t->cases){
+				for(i = 0; i < t->n; i++){
+						printf(" ");
+						print_term_lisp(t->cases[i]);
+				}
+		}
+		printf(")");
+}
+
+void print_term_lisp_helper(term_list *ctx, int *n)
+{
+		if(!ctx) return;
+		print_term_lisp_helper(ctx->next, n);
+		++*n;
+		printf("(CTX ");
+		print_term_lisp(ctx->value);
+		printf(" ");
+}
+
+void print_term_lisp_r(term *t, term_list *ctx)
+{
+		int n;
+		print_term_lisp_helper(ctx, &n);
+		print_term_lisp(t);
+		for(; n > 0; n--) printf(")");
+}
